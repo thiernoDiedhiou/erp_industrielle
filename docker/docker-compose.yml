@@ -1,0 +1,136 @@
+services:
+  # ─── Infrastructure ────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: saas_erp_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-saas_erp}
+      POSTGRES_USER: ${POSTGRES_USER:-saas_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saas_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-saas_user} -d ${POSTGRES_DB:-saas_erp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: saas_erp_redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secret}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: saas_erp_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-erp_user}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-erp_rabbit}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-erp}
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Interface de gestion (dashboard)
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ─── API NestJS ────────────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: saas_erp_api
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-saas_user}:${POSTGRES_PASSWORD:-saas_secret}@postgres:5432/${POSTGRES_DB:-saas_erp}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-erp_user}:${RABBITMQ_PASSWORD:-erp_rabbit}@rabbitmq:5672/${RABBITMQ_VHOST:-erp}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@gisac.sn}
+      FRONTEND_URL: https://${DOMAIN:-localhost}
+      API_PORT: 3001
+    # En production, l'API n'expose pas de port directement (Nginx est le seul point d'entrée)
+    expose:
+      - "3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - api_logs:/app/logs
+    restart: unless-stopped
+
+  # ─── Frontend Next.js ──────────────────────────────────────────────────────
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    container_name: saas_erp_web
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: https://api.${DOMAIN:-localhost}/api/v1
+    # Pas de port exposé directement — Nginx proxifie
+    expose:
+      - "3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ─── Reverse Proxy Nginx (HTTPS) ───────────────────────────────────────────
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: saas_erp_nginx
+    ports:
+      - "80:80"   # HTTP → redirige vers HTTPS
+      - "443:443" # HTTPS
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/certbot-webroot:/var/www/certbot:ro
+      - nginx_logs:/var/log/nginx
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  api_logs:
+  nginx_logs:

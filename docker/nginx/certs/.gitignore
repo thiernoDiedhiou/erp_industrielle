@@ -1,0 +1,6 @@
+# Ne jamais commiter les certificats SSL
+*.pem
+*.key
+*.crt
+*.p12
+!.gitignore

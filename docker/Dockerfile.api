@@ -1,0 +1,42 @@
+# ── Stage 1 : build ──────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY package*.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/database/package.json ./packages/database/
+COPY apps/api/package.json ./apps/api/
+
+RUN npm ci --workspaces --include-workspace-root
+
+COPY packages/ ./packages/
+COPY apps/api/ ./apps/api/
+
+# Générer le client Prisma
+RUN cd packages/database && npx prisma generate
+
+# Compiler l'API
+RUN cd apps/api && npx tsc
+
+# ── Stage 2 : run ─────────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY package*.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/database/package.json ./packages/database/
+COPY apps/api/package.json ./apps/api/
+
+RUN npm ci --workspaces --include-workspace-root --omit=dev
+
+# Copier le build
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY packages/database/prisma ./packages/database/prisma
+
+EXPOSE 3001
+
+# Migrations + démarrage
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma && node apps/api/dist/main.js"]

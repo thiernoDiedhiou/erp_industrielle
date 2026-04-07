@@ -1,0 +1,30 @@
+# Override pour le développement local
+# Usage : docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Différences vs production :
+#  - API et Web exposent leurs ports directement (pas besoin de Nginx)
+#  - Nginx désactivé
+#  - Variables d'env adaptées au local
+
+services:
+  api:
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+    expose: !reset []
+
+  web:
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+    ports:
+      - "3000:3000"
+    expose: !reset []
+
+  # Désactiver Nginx en développement
+  nginx:
+    profiles:
+      - production

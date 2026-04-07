@@ -1,0 +1,16 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "testEnvironment": "node",
+  "moduleNameMapper": {
+    "^@saas-erp/shared(.*)$": "<rootDir>/../../../packages/shared/src$1",
+    "^@saas-erp/database(.*)$": "<rootDir>/../../../packages/database/src$1"
+  },
+  "testTimeout": 30000,
+  "globalSetup": "./setup.ts",
+  "globalTeardown": "./teardown.ts"
+}
