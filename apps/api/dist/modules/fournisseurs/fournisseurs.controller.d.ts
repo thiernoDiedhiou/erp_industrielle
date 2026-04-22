@@ -13,13 +13,19 @@ export declare class FournisseursController {
         } & {
             id: string;
             tenantId: string;
+            createdAt: Date;
             reference: string;
             nom: string;
             email: string | null;
-            actif: boolean;
             telephone: string | null;
-            pays: string;
+            actif: boolean;
+            updatedAt: Date;
             deletedAt: Date | null;
+            pays: string;
+            contact: string | null;
+            delaiLivraisonMoyen: number | null;
+            noteEvaluation: import(".prisma/client/runtime/library").Decimal | null;
+            conditionsPaiement: string | null;
         })[];
         total: number;
         page: number;
@@ -36,35 +42,53 @@ export declare class FournisseursController {
     } & {
         id: string;
         tenantId: string;
+        createdAt: Date;
         reference: string;
         nom: string;
         email: string | null;
-        actif: boolean;
         telephone: string | null;
-        pays: string;
+        actif: boolean;
+        updatedAt: Date;
         deletedAt: Date | null;
+        pays: string;
+        contact: string | null;
+        delaiLivraisonMoyen: number | null;
+        noteEvaluation: import(".prisma/client/runtime/library").Decimal | null;
+        conditionsPaiement: string | null;
     }>;
     creer(user: JwtPayload, dto: CreateFournisseurDto): Promise<{
         id: string;
         tenantId: string;
+        createdAt: Date;
         reference: string;
         nom: string;
         email: string | null;
-        actif: boolean;
         telephone: string | null;
-        pays: string;
+        actif: boolean;
+        updatedAt: Date;
         deletedAt: Date | null;
+        pays: string;
+        contact: string | null;
+        delaiLivraisonMoyen: number | null;
+        noteEvaluation: import(".prisma/client/runtime/library").Decimal | null;
+        conditionsPaiement: string | null;
     }>;
     modifier(user: JwtPayload, id: string, dto: Partial<CreateFournisseurDto>): Promise<{
         id: string;
         tenantId: string;
+        createdAt: Date;
         reference: string;
         nom: string;
         email: string | null;
-        actif: boolean;
         telephone: string | null;
-        pays: string;
+        actif: boolean;
+        updatedAt: Date;
         deletedAt: Date | null;
+        pays: string;
+        contact: string | null;
+        delaiLivraisonMoyen: number | null;
+        noteEvaluation: import(".prisma/client/runtime/library").Decimal | null;
+        conditionsPaiement: string | null;
     }>;
     supprimer(user: JwtPayload, id: string): Promise<{
         message: string;
@@ -72,12 +96,18 @@ export declare class FournisseursController {
     toggle(user: JwtPayload, id: string): Promise<{
         id: string;
         tenantId: string;
+        createdAt: Date;
         reference: string;
         nom: string;
         email: string | null;
-        actif: boolean;
         telephone: string | null;
-        pays: string;
+        actif: boolean;
+        updatedAt: Date;
         deletedAt: Date | null;
+        pays: string;
+        contact: string | null;
+        delaiLivraisonMoyen: number | null;
+        noteEvaluation: import(".prisma/client/runtime/library").Decimal | null;
+        conditionsPaiement: string | null;
     }>;
 }

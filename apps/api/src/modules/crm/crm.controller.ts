@@ -11,9 +11,9 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { CrmService } from './crm.service';
-import { CreateClientDto } from './dto/create-client.dto';
+import { CreateClientDto, TYPES_CLIENT } from './dto/create-client.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { ModuleActiveGuard } from '../../common/guards/module-active.guard';
@@ -36,14 +36,39 @@ export class CrmController {
 
   @Get('clients')
   @ApiOperation({ summary: 'Liste des clients paginée' })
-  getClients(@CurrentUser() user: JwtPayload, @Query() query: PaginationQueryDto) {
-    return this.crmService.getClients(user.tenantId, query);
+  @ApiQuery({ name: 'type', required: false, enum: TYPES_CLIENT })
+  getClients(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: PaginationQueryDto,
+    @Query('type') type?: string,
+  ) {
+    return this.crmService.getClients(user.tenantId, { ...query, type });
   }
 
   @Get('clients/:id')
-  @ApiOperation({ summary: 'Détail d\'un client' })
+  @ApiOperation({ summary: 'Détail d\'un client avec 5 dernières commandes' })
   getClient(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     return this.crmService.getClient(user.tenantId, id);
+  }
+
+  @Get('clients/:id/commandes')
+  @ApiOperation({ summary: 'Historique complet des commandes d\'un client' })
+  getClientCommandes(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.crmService.getClientCommandes(user.tenantId, id, query);
+  }
+
+  @Get('clients/:id/factures')
+  @ApiOperation({ summary: 'Historique des factures et encours d\'un client' })
+  getClientFactures(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.crmService.getClientFactures(user.tenantId, id, query);
   }
 
   @Post('clients')

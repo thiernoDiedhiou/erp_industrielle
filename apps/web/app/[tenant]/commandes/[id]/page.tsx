@@ -5,15 +5,26 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { ArrowLeft, FileText, Factory } from 'lucide-react';
+import { usePermissions } from '@/lib/permissions-context';
 
 const STATUTS_COULEURS: Record<string, string> = {
-  brouillon: 'bg-gray-100 text-gray-700',
-  confirmee: 'bg-blue-100 text-blue-700',
+  brouillon:     'bg-gray-100 text-gray-700',
+  confirmee:     'bg-blue-100 text-blue-700',
   en_production: 'bg-orange-100 text-orange-700',
-  prete: 'bg-yellow-100 text-yellow-700',
-  livree: 'bg-green-100 text-green-700',
-  facturee: 'bg-purple-100 text-purple-700',
-  annulee: 'bg-red-100 text-red-700',
+  prete:         'bg-yellow-100 text-yellow-700',
+  livree:        'bg-green-100 text-green-700',
+  facturee:      'bg-purple-100 text-purple-700',
+  annulee:       'bg-red-100 text-red-700',
+};
+
+const STATUTS_LABELS: Record<string, string> = {
+  brouillon:     'Brouillon',
+  confirmee:     'Confirmée',
+  en_production: 'En production',
+  prete:         'Prête',
+  livree:        'Livrée',
+  facturee:      'Facturée',
+  annulee:       'Annulée',
 };
 
 const TRANSITIONS: Record<string, { label: string; statut: string; color: string }[]> = {
@@ -33,6 +44,7 @@ export default function CommandeDetailPage() {
   const toast = useToast();
   const id = params.id as string;
   const tenant = params.tenant as string;
+  const { peutEcrire } = usePermissions('commandes');
 
   const { data: commande, isLoading } = useQuery({
     queryKey: ['commande', id],
@@ -88,12 +100,12 @@ export default function CommandeDetailPage() {
           <p className="text-sm text-gray-500">{commande.client?.nom}</p>
         </div>
         <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUTS_COULEURS[commande.statut] || 'bg-gray-100'}`}>
-          {commande.statut}
+          {STATUTS_LABELS[commande.statut] ?? commande.statut}
         </span>
       </div>
 
       {/* Actions workflow */}
-      {(transitions.length > 0 || commande.statut === 'livree') && (
+      {peutEcrire && (transitions.length > 0 || commande.statut === 'livree') && (
         <div className="flex gap-2 flex-wrap">
           {transitions.map((t) => (
             <button
@@ -227,11 +239,11 @@ export default function CommandeDetailPage() {
                 <button
                   key={f.id}
                   type="button"
-                  onClick={() => router.push(`/${tenant}/facturation`)}
+                  onClick={() => router.push(`/${tenant}/facturation/${f.id}`)}
                   className="w-full text-left flex justify-between text-sm p-2 rounded hover:bg-gray-50"
                 >
                   <span className="text-purple-700">{f.reference}</span>
-                  <span className="text-gray-500">{f.statut}</span>
+                  <span className="text-gray-500">{STATUTS_LABELS[f.statut] ?? f.statut}</span>
                 </button>
               ))}
             </div>

@@ -14,21 +14,21 @@ export declare class FacturationService {
     }): Promise<{
         items: ({
             facture: {
+                reference: string;
                 commande: {
                     client: {
                         nom: string;
                     };
                 };
-                reference: string;
             };
         } & {
             id: string;
-            tenantId: string;
-            reference: string | null;
-            montant: import(".prisma/client/runtime/library").Decimal;
-            notes: string | null;
             factureId: string;
+            tenantId: string;
+            montant: import(".prisma/client/runtime/library").Decimal;
             mode: string;
+            reference: string | null;
+            notes: string | null;
             datePaiement: Date;
         })[];
         total: number;
@@ -42,11 +42,11 @@ export declare class FacturationService {
     }): Promise<{
         items: ({
             commande: {
+                reference: string;
                 client: {
                     nom: string;
                     email: string | null;
                 };
-                reference: string;
             };
             paiements: {
                 montant: import(".prisma/client/runtime/library").Decimal;
@@ -56,16 +56,16 @@ export declare class FacturationService {
         } & {
             id: string;
             tenantId: string;
-            createdAt: Date;
             reference: string;
-            deletedAt: Date | null;
+            commandeId: string;
             statut: string;
             totalHT: import(".prisma/client/runtime/library").Decimal;
             tva: import(".prisma/client/runtime/library").Decimal;
             totalTTC: import(".prisma/client/runtime/library").Decimal;
-            commandeId: string;
             dateEcheance: Date;
             pdfUrl: string | null;
+            createdAt: Date;
+            deletedAt: Date | null;
         })[];
         total: number;
         page: number;
@@ -76,94 +76,107 @@ export declare class FacturationService {
             client: {
                 id: string;
                 tenantId: string;
-                createdAt: Date;
-                type: string;
                 reference: string;
+                statut: string;
+                createdAt: Date;
+                deletedAt: Date | null;
+                commercialId: string | null;
+                updatedAt: Date;
                 nom: string;
-                email: string | null;
-                telephone: string | null;
+                type: string;
+                ninea: string | null;
                 adresse: string | null;
                 ville: string | null;
-                updatedAt: Date;
-                deletedAt: Date | null;
-                ninea: string | null;
-                statut: string;
+                telephone: string | null;
+                email: string | null;
+                contact: string | null;
+                plafondCredit: import(".prisma/client/runtime/library").Decimal | null;
+                delaiPaiement: number | null;
             };
             lignes: ({
                 produit: {
                     id: string;
                     tenantId: string;
-                    createdAt: Date;
-                    description: string | null;
                     reference: string;
-                    unite: string;
-                    nom: string;
-                    actif: boolean;
+                    createdAt: Date;
                     deletedAt: Date | null;
-                    categorie: string;
+                    updatedAt: Date;
+                    nom: string;
                     prixUnitaire: import(".prisma/client/runtime/library").Decimal;
+                    description: string | null;
+                    categorie: string;
+                    unite: string;
+                    coutProduction: import(".prisma/client/runtime/library").Decimal | null;
+                    poidsUnite: import(".prisma/client/runtime/library").Decimal | null;
+                    stockMin: import(".prisma/client/runtime/library").Decimal;
+                    stockActuel: import(".prisma/client/runtime/library").Decimal;
+                    actif: boolean;
                 };
             } & {
                 id: string;
-                description: string | null;
                 montant: import(".prisma/client/runtime/library").Decimal;
-                prixUnitaire: import(".prisma/client/runtime/library").Decimal;
+                commandeId: string;
                 produitId: string;
                 quantite: import(".prisma/client/runtime/library").Decimal;
-                commandeId: string;
+                prixUnitaire: import(".prisma/client/runtime/library").Decimal;
+                remise: import(".prisma/client/runtime/library").Decimal;
+                description: string | null;
             })[];
         } & {
             id: string;
             tenantId: string;
-            createdAt: Date;
             reference: string;
-            updatedAt: Date;
-            deletedAt: Date | null;
+            notes: string | null;
             statut: string;
-            clientId: string;
-            dateLivraison: Date | null;
             totalHT: import(".prisma/client/runtime/library").Decimal;
             tva: import(".prisma/client/runtime/library").Decimal;
             totalTTC: import(".prisma/client/runtime/library").Decimal;
-            notes: string | null;
+            createdAt: Date;
+            deletedAt: Date | null;
+            clientId: string;
+            dateLivraison: Date | null;
+            dateLivraisonPrevue: Date | null;
+            adresseLivraison: string | null;
+            commercialId: string | null;
+            updatedAt: Date;
         };
         paiements: {
             id: string;
-            tenantId: string;
-            reference: string | null;
-            montant: import(".prisma/client/runtime/library").Decimal;
-            notes: string | null;
             factureId: string;
+            tenantId: string;
+            montant: import(".prisma/client/runtime/library").Decimal;
             mode: string;
+            reference: string | null;
+            notes: string | null;
             datePaiement: Date;
         }[];
     } & {
         id: string;
         tenantId: string;
-        createdAt: Date;
         reference: string;
-        deletedAt: Date | null;
+        commandeId: string;
         statut: string;
         totalHT: import(".prisma/client/runtime/library").Decimal;
         tva: import(".prisma/client/runtime/library").Decimal;
         totalTTC: import(".prisma/client/runtime/library").Decimal;
-        commandeId: string;
         dateEcheance: Date;
         pdfUrl: string | null;
+        createdAt: Date;
+        deletedAt: Date | null;
     }>;
     creerDepuisCommande(tenantId: string, commandeId: string): Promise<{
         id: string;
         tenantId: string;
-        createdAt: Date;
         reference: string;
-        deletedAt: Date | null;
+        commandeId: string;
         statut: string;
         totalHT: import(".prisma/client/runtime/library").Decimal;
         tva: import(".prisma/client/runtime/library").Decimal;
         totalTTC: import(".prisma/client/runtime/library").Decimal;
-        commandeId: string;
         dateEcheance: Date;
         pdfUrl: string | null;
+        createdAt: Date;
+        deletedAt: Date | null;
     }>;
     enregistrerPaiement(tenantId: string, factureId: string, data: {
         montant: number;
@@ -172,12 +185,12 @@ export declare class FacturationService {
         notes?: string;
     }): Promise<{
         id: string;
-        tenantId: string;
-        reference: string | null;
-        montant: import(".prisma/client/runtime/library").Decimal;
-        notes: string | null;
         factureId: string;
+        tenantId: string;
+        montant: import(".prisma/client/runtime/library").Decimal;
         mode: string;
+        reference: string | null;
+        notes: string | null;
         datePaiement: Date;
     }>;
     getStats(tenantId: string): Promise<{

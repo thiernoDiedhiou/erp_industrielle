@@ -152,4 +152,13 @@ export class TenantsService {
       select: { id: true, nom: true, role: true },
     });
   }
+
+  async getBranding(slug: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug },
+      select: { nom: true, slug: true, logo: true, couleurPrimaire: true, couleurSecondaire: true },
+    });
+    if (!tenant) throw new NotFoundException('Tenant introuvable');
+    return tenant;
+  }
 }

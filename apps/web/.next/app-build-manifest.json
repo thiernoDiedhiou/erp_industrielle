@@ -1,9 +1,14 @@
 {
   "pages": {
-    "/page": [
+    "/[tenant]/admin/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/[tenant]/admin/page.js"
+    ],
+    "/[tenant]/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/layout.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,25 +16,130 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/(auth)/login/page": [
+    "/super-admin/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(auth)/login/page.js"
+      "static/chunks/app/super-admin/login/page.js"
+    ],
+    "/super-admin/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/super-admin/layout.js"
+    ],
+    "/super-admin/dashboard/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/super-admin/dashboard/page.js"
+    ],
+    "/super-admin/tenants/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/super-admin/tenants/page.js"
+    ],
+    "/super-admin/tenants/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/super-admin/tenants/[id]/page.js"
+    ],
+    "/[tenant]/parametres/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/parametres/page.js"
+    ],
+    "/[tenant]/settings/groupes/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/settings/groupes/page.js"
+    ],
+    "/[tenant]/settings/utilisateurs/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/settings/utilisateurs/page.js"
+    ],
+    "/[tenant]/audit/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/audit/page.js"
+    ],
+    "/[tenant]/logistique/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/logistique/page.js"
+    ],
+    "/[tenant]/clients/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/clients/page.js"
     ],
     "/[tenant]/dashboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/[tenant]/dashboard/page.js"
     ],
-    "/[tenant]/layout": [
+    "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/[tenant]/layout.js"
+      "static/chunks/app/page.js"
     ],
-    "/[tenant]/admin/page": [
+    "/(auth)/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/[tenant]/admin/page.js"
+      "static/chunks/app/(auth)/login/page.js"
+    ],
+    "/[tenant]/commandes/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/commandes/page.js"
+    ],
+    "/[tenant]/facturation/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/facturation/page.js"
+    ],
+    "/[tenant]/commandes/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/commandes/[id]/page.js"
+    ],
+    "/[tenant]/commandes/nouvelle/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/commandes/nouvelle/page.js"
+    ],
+    "/[tenant]/facturation/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/facturation/[id]/page.js"
+    ],
+    "/[tenant]/production/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/production/page.js"
+    ],
+    "/[tenant]/machines/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/machines/page.js"
+    ],
+    "/[tenant]/stock/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/stock/page.js"
+    ],
+    "/[tenant]/matieres-premieres/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/matieres-premieres/page.js"
+    ],
+    "/[tenant]/fournisseurs/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[tenant]/fournisseurs/page.js"
+    ],
+    "/_not-found/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/_not-found/page.js"
     ]
   }
 }

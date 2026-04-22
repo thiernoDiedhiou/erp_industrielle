@@ -5,12 +5,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { Recycle, Plus, X, CheckCircle2 } from 'lucide-react';
+import { usePermissions } from '@/lib/permissions-context';
 
 const STATUTS_COULEURS: Record<string, string> = {
   planifiee: 'bg-gray-100 text-gray-700',
-  en_cours: 'bg-blue-100 text-blue-700',
+  en_cours:  'bg-blue-100 text-blue-700',
   completee: 'bg-green-100 text-green-700',
-  annulee: 'bg-red-100 text-red-700',
+  annulee:   'bg-red-100 text-red-700',
+};
+
+const STATUTS_LABELS: Record<string, string> = {
+  planifiee: 'Planifiée',
+  en_cours:  'En cours',
+  completee: 'Complétée',
+  annulee:   'Annulée',
 };
 
 const FORM_VIDE = { typeDechet: '', quantite: '', unite: 'kg', collecteur: '' };
@@ -20,6 +28,7 @@ export default function RecyclagePage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(FORM_VIDE);
   const toast = useToast();
+  const { peutEcrire } = usePermissions('recyclage');
 
   const { data: stats } = useQuery({
     queryKey: ['recyclage-stats'],
@@ -64,14 +73,16 @@ export default function RecyclagePage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Recyclage</h1>
-        <button
-          type="button"
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-teal-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-teal-700"
-        >
-          <Plus size={16} />
-          Nouvelle collecte
-        </button>
+        {peutEcrire && (
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 bg-teal-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-teal-700"
+          >
+            <Plus size={16} />
+            Nouvelle collecte
+          </button>
+        )}
       </div>
 
       {/* Stats */}
@@ -206,14 +217,14 @@ export default function RecyclagePage() {
                   <td className="px-4 py-3 text-sm text-gray-500">{c.collecteur || '-'}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs ${STATUTS_COULEURS[c.statut] ?? 'bg-teal-50 text-teal-700'}`}>
-                      {c.statut}
+                      {STATUTS_LABELS[c.statut] ?? c.statut}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400">
                     {new Date(c.dateCollecte).toLocaleDateString('fr-SN')}
                   </td>
                   <td className="px-4 py-3">
-                    {c.statut === 'planifiee' && (
+                    {peutEcrire && c.statut === 'planifiee' && (
                       <button
                         type="button"
                         aria-label="Marquer comme complétée"

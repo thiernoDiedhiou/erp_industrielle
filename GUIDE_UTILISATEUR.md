@@ -1,6 +1,6 @@
 # Guide Utilisateur — ERP Industriel GISAC
 
-> **Version** 1.0 — Avril 2026
+> **Version** 1.1 — Avril 2026
 > Ce document est mis à jour à chaque nouvelle fonctionnalité.
 
 ---
@@ -53,7 +53,7 @@ L'ERP Industriel GISAC est la plateforme de gestion intégrée de **Global Inves
 
 ### Interface principale
 
-```
+```text
 ┌──────────────┬────────────────────────────────────────┐
 │              │                                        │
 │  Barre de    │                                        │
@@ -68,9 +68,11 @@ L'ERP Industriel GISAC est la plateforme de gestion intégrée de **Global Inves
 └──────────────┴────────────────────────────────────────┘
 ```
 
-- **Barre de navigation** (gauche, bleue) : accès à tous les modules selon votre rôle
+- **Barre de navigation** (gauche) : couleur aux couleurs de votre entreprise, accès à tous les modules selon votre rôle
 - **Zone de travail** (droite) : contenu du module actif
 - **Sur mobile** : appuyer sur le bouton menu (3 traits) pour ouvrir la navigation
+
+> La barre de navigation affiche le **logo** et les **couleurs** de votre entreprise, configurés par votre administrateur Innosoft.
 
 ### Se déconnecter
 
@@ -619,10 +621,11 @@ Oui. L'interface est responsive et fonctionne sur tous les appareils. Sur mobile
 ## 21. Historique des mises à jour
 
 | Version | Date | Nouveautés |
-|---------|------|------------|
+| --- | --- | --- |
+| **1.1** | Avril 2026 | Charte graphique par tenant (couleurs + logo), gestion des permissions sur tous les modules (boutons masqués selon droits), module Nomenclatures BOM |
 | **1.0** | Avril 2026 | Version initiale : CRM, Commandes, Production, Stock, Facturation, Recyclage, Fournisseurs, Machines, Matières premières, Logistique, Reporting, Journal d'audit |
 
 ---
 
-*Document interne GISAC — Global Invest Samoura & Co*
-*Mis à jour par l'équipe technique — contact : admin@gisac.sn*
+Document interne GISAC — Global Invest Samoura & Co
+Mis à jour par l'équipe technique Innosoft Creation — contact : `admin@innosoft.sn`

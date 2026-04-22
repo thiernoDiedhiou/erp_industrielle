@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, IsDateString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -33,4 +33,19 @@ export class CreateMachineDto {
   @IsBoolean()
   @IsOptional()
   actif?: boolean;
+
+  @ApiPropertyOptional({ example: 'Atelier A — Zone plastique' })
+  @IsString()
+  @IsOptional()
+  localisation?: string;
+
+  @ApiPropertyOptional({ example: '2026-01-15' })
+  @IsDateString()
+  @IsOptional()
+  dateDerniereMaintenance?: string;
+
+  @ApiPropertyOptional({ example: '2026-07-15' })
+  @IsDateString()
+  @IsOptional()
+  prochaineMaintenanceDate?: string;
 }

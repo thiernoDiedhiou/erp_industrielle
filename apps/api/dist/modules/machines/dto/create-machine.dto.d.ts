@@ -5,4 +5,7 @@ export declare class CreateMachineDto {
     capacite?: number;
     unite?: string;
     actif?: boolean;
+    localisation?: string;
+    dateDerniereMaintenance?: string;
+    prochaineMaintenanceDate?: string;
 }

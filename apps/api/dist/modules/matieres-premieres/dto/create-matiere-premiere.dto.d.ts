@@ -7,4 +7,5 @@ export declare class CreateMatierePremiereDto {
     prixAchat?: number;
     stockMinimum?: number;
     isRecycle?: boolean;
+    delaiApprovisionnement?: number;
 }

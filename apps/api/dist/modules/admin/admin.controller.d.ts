@@ -62,18 +62,18 @@ export declare class AdminController {
         id: string;
         createdAt: Date;
         nom: string;
+        telephone: string | null;
+        actif: boolean;
+        updatedAt: Date;
         slug: string;
         secteur: string;
         plan: string;
-        actif: boolean;
         logo: string | null;
         couleurPrimaire: string | null;
         couleurSecondaire: string | null;
-        telephone: string | null;
         adresse: string | null;
         ville: string | null;
         pays: string;
-        updatedAt: Date;
     }>;
     toggleTenant(id: string, body: {
         actif: boolean;
@@ -81,18 +81,18 @@ export declare class AdminController {
         id: string;
         createdAt: Date;
         nom: string;
+        telephone: string | null;
+        actif: boolean;
+        updatedAt: Date;
         slug: string;
         secteur: string;
         plan: string;
-        actif: boolean;
         logo: string | null;
         couleurPrimaire: string | null;
         couleurSecondaire: string | null;
-        telephone: string | null;
         adresse: string | null;
         ville: string | null;
         pays: string;
-        updatedAt: Date;
     }>;
     toggleModule(tenantId: string, code: string, body: {
         actif: boolean;

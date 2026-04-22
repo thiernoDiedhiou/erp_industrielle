@@ -66,4 +66,12 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Boolean)
 ], CreateMatierePremiereDto.prototype, "isRecycle", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 7, description: 'Délai d\'approvisionnement en jours' }),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateMatierePremiereDto.prototype, "delaiApprovisionnement", void 0);
 //# sourceMappingURL=create-matiere-premiere.dto.js.map

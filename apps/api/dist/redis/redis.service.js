@@ -8,48 +8,98 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var RedisService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RedisService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const ioredis_1 = require("ioredis");
-let RedisService = class RedisService {
+let RedisService = RedisService_1 = class RedisService {
     constructor(config) {
         this.config = config;
+        this.logger = new common_1.Logger(RedisService_1.name);
+        this.disponible = false;
     }
     onModuleInit() {
-        this.client = new ioredis_1.default(this.config.get('REDIS_URL') || 'redis://localhost:6379');
+        this.client = new ioredis_1.default(this.config.get('REDIS_URL') || 'redis://localhost:6379', {
+            maxRetriesPerRequest: 0,
+            lazyConnect: false,
+            retryStrategy: (times) => Math.min(times * 500, 30000),
+            enableOfflineQueue: false,
+        });
+        this.client.on('error', (err) => {
+            if (this.disponible) {
+                this.logger.warn(`Redis déconnecté : ${err.message}`);
+            }
+            this.disponible = false;
+        });
+        this.client.on('connect', () => {
+            this.disponible = true;
+            this.logger.log('Redis connecté');
+        });
+        this.client.on('reconnecting', () => {
+            this.logger.debug('Redis : tentative de reconnexion…');
+        });
     }
     async onModuleDestroy() {
-        await this.client.quit();
+        await this.client.quit().catch(() => { });
     }
     async get(key) {
-        return this.client.get(key);
+        try {
+            return await this.client.get(key);
+        }
+        catch {
+            return null;
+        }
     }
     async set(key, value, ttlSeconds) {
-        if (ttlSeconds) {
-            await this.client.set(key, value, 'EX', ttlSeconds);
+        try {
+            if (ttlSeconds) {
+                await this.client.set(key, value, 'EX', ttlSeconds);
+            }
+            else {
+                await this.client.set(key, value);
+            }
         }
-        else {
-            await this.client.set(key, value);
+        catch {
         }
     }
     async del(key) {
-        await this.client.del(key);
+        try {
+            await this.client.del(key);
+        }
+        catch {
+        }
     }
     async getModulesActifs(tenantId) {
-        const cached = await this.client.get(`tenant:${tenantId}:modules`);
-        return cached ? JSON.parse(cached) : null;
+        try {
+            const cached = await this.client.get(`tenant:${tenantId}:modules`);
+            return cached ? JSON.parse(cached) : null;
+        }
+        catch {
+            return null;
+        }
     }
     async setModulesActifs(tenantId, modules) {
-        await this.client.set(`tenant:${tenantId}:modules`, JSON.stringify(modules), 'EX', 300);
+        try {
+            await this.client.set(`tenant:${tenantId}:modules`, JSON.stringify(modules), 'EX', 300);
+        }
+        catch {
+        }
     }
     async invalidateModulesActifs(tenantId) {
-        await this.client.del(`tenant:${tenantId}:modules`);
+        try {
+            await this.client.del(`tenant:${tenantId}:modules`);
+        }
+        catch {
+        }
+    }
+    estDisponible() {
+        return this.disponible;
     }
 };
 exports.RedisService = RedisService;
-exports.RedisService = RedisService = __decorate([
+exports.RedisService = RedisService = RedisService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [config_1.ConfigService])
 ], RedisService);

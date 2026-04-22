@@ -8,22 +8,19 @@ export class CrmService {
 
   // ─── Clients ────────────────────────────────────────────────────────────────
 
-  async getClients(tenantId: string, opts: { page?: number; limite?: number; search?: string }) {
-    const { page = 1, limite = 20, search } = opts;
+  async getClients(tenantId: string, opts: { page?: number; limite?: number; search?: string; type?: string }) {
+    const { page = 1, limite = 20, search, type } = opts;
     const skip = (page - 1) * limite;
 
-    const where = {
-      tenantId,
-      deletedAt: null,
-      ...(search
-        ? {
-            OR: [
-              { nom: { contains: search, mode: 'insensitive' as const } },
-              { email: { contains: search, mode: 'insensitive' as const } },
-            ],
-          }
-        : {}),
-    };
+    const where: any = { tenantId, deletedAt: null };
+    if (type) where.type = type;
+    if (search) {
+      where.OR = [
+        { nom: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { ville: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.client.findMany({
@@ -89,6 +86,74 @@ export class CrmService {
     // Soft delete — on n'efface jamais un client en ERP
     await this.prisma.client.update({ where: { id }, data: { deletedAt: new Date() } });
     return { message: 'Client archivé' };
+  }
+
+  async getClientCommandes(tenantId: string, clientId: string, opts: { page?: number; limite?: number }) {
+    const client = await this.prisma.client.findFirst({ where: { id: clientId, tenantId, deletedAt: null } });
+    if (!client) throw new NotFoundException('Client introuvable');
+
+    const { page = 1, limite = 20 } = opts;
+    const skip = (page - 1) * limite;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.commande.findMany({
+        where: { clientId, tenantId, deletedAt: null },
+        skip,
+        take: limite,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, reference: true, statut: true,
+          totalHT: true, totalTTC: true, createdAt: true,
+          dateLivraisonPrevue: true,
+          _count: { select: { lignes: true } },
+        },
+      }),
+      this.prisma.commande.count({ where: { clientId, tenantId, deletedAt: null } }),
+    ]);
+
+    const totalCA = await this.prisma.commande.aggregate({
+      where: { clientId, tenantId, deletedAt: null, statut: { in: ['livree', 'facturee'] } },
+      _sum: { totalHT: true },
+    });
+
+    return { items, total, page, totalPages: Math.ceil(total / limite), totalCA: Number(totalCA._sum.totalHT ?? 0) };
+  }
+
+  async getClientFactures(tenantId: string, clientId: string, opts: { page?: number; limite?: number }) {
+    const client = await this.prisma.client.findFirst({ where: { id: clientId, tenantId, deletedAt: null } });
+    if (!client) throw new NotFoundException('Client introuvable');
+
+    const { page = 1, limite = 20 } = opts;
+    const skip = (page - 1) * limite;
+
+    // Les factures sont liées aux clients via commande.clientId
+    const where = { tenantId, commande: { clientId } };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.facture.findMany({
+        where,
+        skip,
+        take: limite,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, reference: true, statut: true,
+          totalHT: true, totalTTC: true,
+          dateEcheance: true, createdAt: true,
+          paiements: { select: { montant: true } },
+        },
+      }),
+      this.prisma.facture.count({ where }),
+    ]);
+
+    const itemsAvecPaye = items.map((f) => ({
+      ...f,
+      montantPaye: f.paiements.reduce((sum, p) => sum + Number(p.montant), 0),
+      montantHT: Number(f.totalHT),
+      montantTTC: Number(f.totalTTC),
+      paiements: undefined,
+    }));
+
+    return { items: itemsAvecPaye, total, page, totalPages: Math.ceil(total / limite) };
   }
 
   // ─── Produits ───────────────────────────────────────────────────────────────

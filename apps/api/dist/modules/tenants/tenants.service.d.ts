@@ -25,18 +25,18 @@ export declare class TenantsService {
         id: string;
         createdAt: Date;
         nom: string;
+        telephone: string | null;
+        actif: boolean;
+        updatedAt: Date;
         slug: string;
         secteur: string;
         plan: string;
-        actif: boolean;
         logo: string | null;
         couleurPrimaire: string | null;
         couleurSecondaire: string | null;
-        telephone: string | null;
         adresse: string | null;
         ville: string | null;
         pays: string;
-        updatedAt: Date;
     }>;
     getUtilisateurs(tenantId: string, page?: number, limite?: number): Promise<{
         items: {
@@ -45,8 +45,8 @@ export declare class TenantsService {
             nom: string;
             email: string;
             role: string;
-            actif: boolean;
             telephone: string | null;
+            actif: boolean;
             derniereConnexion: Date | null;
         }[];
         total: number;
@@ -100,5 +100,12 @@ export declare class TenantsService {
         id: string;
         nom: string;
         role: string;
+    }>;
+    getBranding(slug: string): Promise<{
+        nom: string;
+        slug: string;
+        logo: string | null;
+        couleurPrimaire: string | null;
+        couleurSecondaire: string | null;
     }>;
 }

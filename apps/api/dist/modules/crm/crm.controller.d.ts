@@ -5,7 +5,7 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 export declare class CrmController {
     private crmService;
     constructor(crmService: CrmService);
-    getClients(user: JwtPayload, query: PaginationQueryDto): Promise<{
+    getClients(user: JwtPayload, query: PaginationQueryDto, type?: string): Promise<{
         items: {
             id: string;
             tenantId: string;
@@ -15,12 +15,16 @@ export declare class CrmController {
             nom: string;
             email: string | null;
             telephone: string | null;
-            adresse: string | null;
-            ville: string | null;
             updatedAt: Date;
             deletedAt: Date | null;
+            adresse: string | null;
+            ville: string | null;
             ninea: string | null;
             statut: string;
+            contact: string | null;
+            commercialId: string | null;
+            plafondCredit: import(".prisma/client/runtime/library").Decimal | null;
+            delaiPaiement: number | null;
         }[];
         total: number;
         page: number;
@@ -43,12 +47,52 @@ export declare class CrmController {
         nom: string;
         email: string | null;
         telephone: string | null;
-        adresse: string | null;
-        ville: string | null;
         updatedAt: Date;
         deletedAt: Date | null;
+        adresse: string | null;
+        ville: string | null;
         ninea: string | null;
         statut: string;
+        contact: string | null;
+        commercialId: string | null;
+        plafondCredit: import(".prisma/client/runtime/library").Decimal | null;
+        delaiPaiement: number | null;
+    }>;
+    getClientCommandes(user: JwtPayload, id: string, query: PaginationQueryDto): Promise<{
+        items: {
+            id: string;
+            createdAt: Date;
+            reference: string;
+            _count: {
+                lignes: number;
+            };
+            statut: string;
+            dateLivraisonPrevue: Date | null;
+            totalHT: import(".prisma/client/runtime/library").Decimal;
+            totalTTC: import(".prisma/client/runtime/library").Decimal;
+        }[];
+        total: number;
+        page: number;
+        totalPages: number;
+        totalCA: number;
+    }>;
+    getClientFactures(user: JwtPayload, id: string, query: PaginationQueryDto): Promise<{
+        items: {
+            montantPaye: number;
+            montantHT: number;
+            montantTTC: number;
+            paiements: undefined;
+            id: string;
+            createdAt: Date;
+            reference: string;
+            statut: string;
+            totalHT: import(".prisma/client/runtime/library").Decimal;
+            totalTTC: import(".prisma/client/runtime/library").Decimal;
+            dateEcheance: Date;
+        }[];
+        total: number;
+        page: number;
+        totalPages: number;
     }>;
     creerClient(user: JwtPayload, dto: CreateClientDto): Promise<{
         id: string;
@@ -59,12 +103,16 @@ export declare class CrmController {
         nom: string;
         email: string | null;
         telephone: string | null;
-        adresse: string | null;
-        ville: string | null;
         updatedAt: Date;
         deletedAt: Date | null;
+        adresse: string | null;
+        ville: string | null;
         ninea: string | null;
         statut: string;
+        contact: string | null;
+        commercialId: string | null;
+        plafondCredit: import(".prisma/client/runtime/library").Decimal | null;
+        delaiPaiement: number | null;
     }>;
     modifierClient(user: JwtPayload, id: string, dto: Partial<CreateClientDto>): Promise<{
         id: string;
@@ -75,12 +123,16 @@ export declare class CrmController {
         nom: string;
         email: string | null;
         telephone: string | null;
-        adresse: string | null;
-        ville: string | null;
         updatedAt: Date;
         deletedAt: Date | null;
+        adresse: string | null;
+        ville: string | null;
         ninea: string | null;
         statut: string;
+        contact: string | null;
+        commercialId: string | null;
+        plafondCredit: import(".prisma/client/runtime/library").Decimal | null;
+        delaiPaiement: number | null;
     }>;
     supprimerClient(user: JwtPayload, id: string): Promise<{
         message: string;
@@ -92,12 +144,17 @@ export declare class CrmController {
             createdAt: Date;
             description: string | null;
             reference: string;
+            stockActuel: import(".prisma/client/runtime/library").Decimal;
             unite: string;
             nom: string;
             actif: boolean;
+            updatedAt: Date;
             deletedAt: Date | null;
             categorie: string;
             prixUnitaire: import(".prisma/client/runtime/library").Decimal;
+            coutProduction: import(".prisma/client/runtime/library").Decimal | null;
+            poidsUnite: import(".prisma/client/runtime/library").Decimal | null;
+            stockMin: import(".prisma/client/runtime/library").Decimal;
         }[];
         total: number;
         page: number;
@@ -109,12 +166,17 @@ export declare class CrmController {
         createdAt: Date;
         description: string | null;
         reference: string;
+        stockActuel: import(".prisma/client/runtime/library").Decimal;
         unite: string;
         nom: string;
         actif: boolean;
+        updatedAt: Date;
         deletedAt: Date | null;
         categorie: string;
         prixUnitaire: import(".prisma/client/runtime/library").Decimal;
+        coutProduction: import(".prisma/client/runtime/library").Decimal | null;
+        poidsUnite: import(".prisma/client/runtime/library").Decimal | null;
+        stockMin: import(".prisma/client/runtime/library").Decimal;
     }>;
     creerProduit(user: JwtPayload, body: any): Promise<{
         id: string;
@@ -122,12 +184,17 @@ export declare class CrmController {
         createdAt: Date;
         description: string | null;
         reference: string;
+        stockActuel: import(".prisma/client/runtime/library").Decimal;
         unite: string;
         nom: string;
         actif: boolean;
+        updatedAt: Date;
         deletedAt: Date | null;
         categorie: string;
         prixUnitaire: import(".prisma/client/runtime/library").Decimal;
+        coutProduction: import(".prisma/client/runtime/library").Decimal | null;
+        poidsUnite: import(".prisma/client/runtime/library").Decimal | null;
+        stockMin: import(".prisma/client/runtime/library").Decimal;
     }>;
     modifierProduit(user: JwtPayload, id: string, body: any): Promise<{
         id: string;
@@ -135,11 +202,16 @@ export declare class CrmController {
         createdAt: Date;
         description: string | null;
         reference: string;
+        stockActuel: import(".prisma/client/runtime/library").Decimal;
         unite: string;
         nom: string;
         actif: boolean;
+        updatedAt: Date;
         deletedAt: Date | null;
         categorie: string;
         prixUnitaire: import(".prisma/client/runtime/library").Decimal;
+        coutProduction: import(".prisma/client/runtime/library").Decimal | null;
+        poidsUnite: import(".prisma/client/runtime/library").Decimal | null;
+        stockMin: import(".prisma/client/runtime/library").Decimal;
     }>;
 }

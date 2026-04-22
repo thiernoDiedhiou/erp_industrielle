@@ -44,6 +44,16 @@ export class CreateBonLivraisonDto {
   @IsOptional()
   dateExpedition?: string;
 
+  @ApiPropertyOptional({ example: 'Ousmane Fall' })
+  @IsString()
+  @IsOptional()
+  chauffeur?: string;
+
+  @ApiPropertyOptional({ example: 'DK-1234-TH' })
+  @IsString()
+  @IsOptional()
+  vehicule?: string;
+
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()

@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { Plus, Search, X, MapPin, Truck, Package, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { usePermissions } from '@/lib/permissions-context';
 
 interface Client { id: string; nom: string; ville?: string; adresse?: string; }
 interface Commande { id: string; reference: string; }
@@ -42,7 +43,7 @@ const TRANSITIONS: Record<string, string[]> = {
 
 const FORM_VIDE = {
   clientId: '', commandeId: '', adresseLivraison: '', transporteur: '',
-  dateExpedition: '', notes: '',
+  dateExpedition: '', chauffeur: '', vehicule: '', notes: '',
 };
 
 export default function LogistiquePage() {
@@ -52,6 +53,7 @@ export default function LogistiquePage() {
   const [formData, setFormData] = useState(FORM_VIDE);
   const qc = useQueryClient();
   const toast = useToast();
+  const { peutEcrire } = usePermissions('logistique');
 
   const { data: stats } = useQuery({
     queryKey: ['logistique-stats'],
@@ -102,10 +104,12 @@ export default function LogistiquePage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Logistique & Livraisons</h1>
-        <button type="button" onClick={() => { setFormData(FORM_VIDE); setModal('create'); }}
-          className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800">
-          <Plus size={16} /> Nouveau BL
-        </button>
+        {peutEcrire && (
+          <button type="button" onClick={() => { setFormData(FORM_VIDE); setModal('create'); }}
+            className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800">
+            <Plus size={16} /> Nouveau BL
+          </button>
+        )}
       </div>
 
       {/* KPIs statuts */}
@@ -131,7 +135,7 @@ export default function LogistiquePage() {
             placeholder="Rechercher un BL, client, transporteur..."
             className="w-full border border-gray-300 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
-        <select value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)}
+        <select aria-label="Filtrer par statut" value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
           <option value="">Tous les statuts</option>
           {STATUTS.map((s) => <option key={s} value={s}>{STATUT_CONFIG[s]?.label ?? s}</option>)}
@@ -197,7 +201,7 @@ export default function LogistiquePage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {transitions.length > 0 && (
+                        {peutEcrire && transitions.length > 0 && (
                           <div className="flex gap-1">
                             {transitions.map((t) => (
                               <button key={t} type="button"
@@ -260,6 +264,20 @@ export default function LogistiquePage() {
                 <label htmlFor="field-dateExp" className="text-sm text-gray-600">Date expédition prévue</label>
                 <input id="field-dateExp" type="date" value={formData.dateExpedition}
                   onChange={(e) => setFormData({ ...formData, dateExpedition: e.target.value })}
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label htmlFor="field-chauffeur" className="text-sm text-gray-600">Chauffeur</label>
+                <input id="field-chauffeur" type="text" value={formData.chauffeur}
+                  onChange={(e) => setFormData({ ...formData, chauffeur: e.target.value })}
+                  placeholder="Nom du chauffeur"
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label htmlFor="field-vehicule" className="text-sm text-gray-600">Véhicule</label>
+                <input id="field-vehicule" type="text" value={formData.vehicule}
+                  onChange={(e) => setFormData({ ...formData, vehicule: e.target.value })}
+                  placeholder="ex: DK-1234-TH"
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="col-span-2">

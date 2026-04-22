@@ -34,6 +34,10 @@ const fournisseurs_module_1 = require("./modules/fournisseurs/fournisseurs.modul
 const machines_module_1 = require("./modules/machines/machines.module");
 const matieres_premieres_module_1 = require("./modules/matieres-premieres/matieres-premieres.module");
 const logistique_module_1 = require("./modules/logistique/logistique.module");
+const bom_module_1 = require("./modules/bom/bom.module");
+const users_module_1 = require("./modules/users/users.module");
+const groupes_module_1 = require("./modules/groupes/groupes.module");
+const super_admin_module_1 = require("./modules/super-admin/super-admin.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -69,6 +73,10 @@ exports.AppModule = AppModule = __decorate([
             machines_module_1.MachinesModule,
             matieres_premieres_module_1.MatieresPremiereModule,
             logistique_module_1.LogistiqueModule,
+            bom_module_1.BomModule,
+            users_module_1.UsersModule,
+            groupes_module_1.GroupesModule,
+            super_admin_module_1.SuperAdminModule,
             audit_module_1.AuditModule,
             queue_module_1.QueueModule,
         ],

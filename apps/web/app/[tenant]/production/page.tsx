@@ -5,13 +5,22 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { Factory, Play, Pause, CheckSquare, Plus, X } from 'lucide-react';
+import { usePermissions } from '@/lib/permissions-context';
 
 const STATUTS_COULEURS: Record<string, string> = {
   planifie: 'bg-gray-100 text-gray-700',
   en_cours: 'bg-orange-100 text-orange-700',
   en_pause: 'bg-yellow-100 text-yellow-700',
-  termine: 'bg-green-100 text-green-700',
-  annule: 'bg-red-100 text-red-700',
+  termine:  'bg-green-100 text-green-700',
+  annule:   'bg-red-100 text-red-700',
+};
+
+const STATUTS_LABELS: Record<string, string> = {
+  planifie: 'Planifié',
+  en_cours: 'En cours',
+  en_pause: 'En pause',
+  termine:  'Terminé',
+  annule:   'Annulé',
 };
 
 const FORM_VIDE = { produitFini: '', quantitePrevue: '', dateDebut: '', dateFin: '', machineId: '', commandeId: '' };
@@ -32,6 +41,7 @@ export default function ProductionPage() {
   const [form, setForm] = useState(FORM_VIDE);
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { peutEcrire } = usePermissions('production');
 
   const { data, isLoading } = useQuery({
     queryKey: ['ofs', filtreStatut],
@@ -44,9 +54,9 @@ export default function ProductionPage() {
   });
 
   const { data: machines } = useQuery({
-    queryKey: ['machines'],
+    queryKey: ['machines-liste'],
     queryFn: async () => {
-      const { data } = await api.get('/production/machines');
+      const { data } = await api.get('/machines', { params: { limite: 100 } });
       return data;
     },
   });
@@ -96,14 +106,16 @@ export default function ProductionPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Production</h1>
-        <button
-          type="button"
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800"
-        >
-          <Plus size={16} />
-          Nouvel OF
-        </button>
+        {peutEcrire && (
+          <button
+            type="button"
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800"
+          >
+            <Plus size={16} />
+            Nouvel OF
+          </button>
+        )}
       </div>
 
       {/* Filtres */}
@@ -143,7 +155,7 @@ export default function ProductionPage() {
                   </div>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs ${STATUTS_COULEURS[of.statut] || 'bg-gray-100'}`}>
-                  {of.statut}
+                  {STATUTS_LABELS[of.statut] ?? of.statut}
                 </span>
               </div>
 
@@ -163,44 +175,46 @@ export default function ProductionPage() {
               </div>
 
               {/* Actions workflow */}
-              <div className="flex gap-2 mt-3">
-                {of.statut === 'planifie' && (
-                  <button
-                    type="button"
-                    onClick={() => changerStatutMutation.mutate({ id: of.id, statut: 'en_cours' })}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-xs hover:bg-orange-700"
-                  >
-                    <Play size={12} /> Démarrer
-                  </button>
-                )}
-                {of.statut === 'en_cours' && (
-                  <>
+              {peutEcrire && (
+                <div className="flex gap-2 mt-3">
+                  {of.statut === 'planifie' && (
                     <button
                       type="button"
-                      onClick={() => changerStatutMutation.mutate({ id: of.id, statut: 'termine' })}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs hover:bg-green-700"
+                      onClick={() => changerStatutMutation.mutate({ id: of.id, statut: 'en_cours' })}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-xs hover:bg-orange-700"
                     >
-                      <CheckSquare size={12} /> Terminer
+                      <Play size={12} /> Démarrer
                     </button>
+                  )}
+                  {of.statut === 'en_cours' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => changerStatutMutation.mutate({ id: of.id, statut: 'termine' })}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs hover:bg-green-700"
+                      >
+                        <CheckSquare size={12} /> Terminer
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => changerStatutMutation.mutate({ id: of.id, statut: 'en_pause' })}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-xs hover:bg-yellow-600"
+                      >
+                        <Pause size={12} /> Pause
+                      </button>
+                    </>
+                  )}
+                  {of.statut === 'en_pause' && (
                     <button
                       type="button"
-                      onClick={() => changerStatutMutation.mutate({ id: of.id, statut: 'en_pause' })}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-xs hover:bg-yellow-600"
+                      onClick={() => changerStatutMutation.mutate({ id: of.id, statut: 'en_cours' })}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-xs hover:bg-orange-700"
                     >
-                      <Pause size={12} /> Pause
+                      <Play size={12} /> Reprendre
                     </button>
-                  </>
-                )}
-                {of.statut === 'en_pause' && (
-                  <button
-                    type="button"
-                    onClick={() => changerStatutMutation.mutate({ id: of.id, statut: 'en_cours' })}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-xs hover:bg-orange-700"
-                  >
-                    <Play size={12} /> Reprendre
-                  </button>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
           {data?.items?.length === 0 && (

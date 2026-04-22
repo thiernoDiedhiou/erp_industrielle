@@ -31,7 +31,10 @@ interface FacturePDF {
 }
 export declare class PdfService {
     genererFacturePdf(data: FacturePDF): Promise<Buffer>;
-    private formatDate;
-    private formatMontant;
+    private dessiner;
+    private labelStatut;
+    private fmt;
+    private fmtDate;
+    private sanitize;
 }
 export {};

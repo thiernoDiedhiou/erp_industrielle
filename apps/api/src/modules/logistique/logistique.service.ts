@@ -70,6 +70,8 @@ export class LogistiqueService {
           commandeId: dto.commandeId,
           adresseLivraison: dto.adresseLivraison,
           transporteur: dto.transporteur,
+          chauffeur: dto.chauffeur,
+          vehicule: dto.vehicule,
           dateExpedition: dto.dateExpedition ? new Date(dto.dateExpedition) : null,
           notes: dto.notes,
           statut: 'prepare',

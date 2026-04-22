@@ -27,9 +27,11 @@ export declare class MatieresPremiereService {
             unite: string;
             stockMinimum: import(".prisma/client/runtime/library").Decimal;
             nom: string;
+            updatedAt: Date;
             deletedAt: Date | null;
             fournisseurId: string | null;
             prixAchat: import(".prisma/client/runtime/library").Decimal;
+            delaiApprovisionnement: number | null;
             isRecycle: boolean;
         }[];
         total: number;
@@ -41,13 +43,19 @@ export declare class MatieresPremiereService {
         fournisseur: {
             id: string;
             tenantId: string;
+            createdAt: Date;
             reference: string;
             nom: string;
             email: string | null;
-            actif: boolean;
             telephone: string | null;
-            pays: string;
+            actif: boolean;
+            updatedAt: Date;
             deletedAt: Date | null;
+            pays: string;
+            contact: string | null;
+            delaiLivraisonMoyen: number | null;
+            noteEvaluation: import(".prisma/client/runtime/library").Decimal | null;
+            conditionsPaiement: string | null;
         } | null;
         mouvements: {
             id: string;
@@ -65,9 +73,11 @@ export declare class MatieresPremiereService {
         unite: string;
         stockMinimum: import(".prisma/client/runtime/library").Decimal;
         nom: string;
+        updatedAt: Date;
         deletedAt: Date | null;
         fournisseurId: string | null;
         prixAchat: import(".prisma/client/runtime/library").Decimal;
+        delaiApprovisionnement: number | null;
         isRecycle: boolean;
     }>;
     creer(tenantId: string, dto: CreateMatierePremiereDto): Promise<{
@@ -80,9 +90,11 @@ export declare class MatieresPremiereService {
         unite: string;
         stockMinimum: import(".prisma/client/runtime/library").Decimal;
         nom: string;
+        updatedAt: Date;
         deletedAt: Date | null;
         fournisseurId: string | null;
         prixAchat: import(".prisma/client/runtime/library").Decimal;
+        delaiApprovisionnement: number | null;
         isRecycle: boolean;
     }>;
     modifier(tenantId: string, id: string, dto: Partial<CreateMatierePremiereDto>): Promise<{
@@ -95,9 +107,11 @@ export declare class MatieresPremiereService {
         unite: string;
         stockMinimum: import(".prisma/client/runtime/library").Decimal;
         nom: string;
+        updatedAt: Date;
         deletedAt: Date | null;
         fournisseurId: string | null;
         prixAchat: import(".prisma/client/runtime/library").Decimal;
+        delaiApprovisionnement: number | null;
         isRecycle: boolean;
     }>;
     ajusterStock(tenantId: string, id: string, quantite: number, type: 'entree' | 'sortie' | 'ajustement', motif?: string): Promise<{
@@ -110,9 +124,11 @@ export declare class MatieresPremiereService {
         unite: string;
         stockMinimum: import(".prisma/client/runtime/library").Decimal;
         nom: string;
+        updatedAt: Date;
         deletedAt: Date | null;
         fournisseurId: string | null;
         prixAchat: import(".prisma/client/runtime/library").Decimal;
+        delaiApprovisionnement: number | null;
         isRecycle: boolean;
     }>;
     supprimer(tenantId: string, id: string): Promise<{

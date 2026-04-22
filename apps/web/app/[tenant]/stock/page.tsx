@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { AlertTriangle, Package, TrendingDown, Plus, Pencil, ClipboardList, X } from 'lucide-react';
+import { usePermissions } from '@/lib/permissions-context';
 
 interface MatierePremiere {
   id: string;
@@ -25,6 +26,7 @@ export default function StockPage() {
   const [stockReel, setStockReel] = useState('');
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { peutEcrire } = usePermissions('stock');
 
   const { data, isLoading } = useQuery({
     queryKey: ['stock-tableau-bord'],
@@ -35,7 +37,7 @@ export default function StockPage() {
   });
 
   const creerMutation = useMutation({
-    mutationFn: (d: object) => api.post('/stock/matieres', d),
+    mutationFn: (d: object) => api.post('/matieres-premieres', d),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-tableau-bord'] });
       fermerModal();
@@ -45,7 +47,7 @@ export default function StockPage() {
   });
 
   const modifierMutation = useMutation({
-    mutationFn: (d: object) => api.put(`/stock/matieres/${selected!.id}`, d),
+    mutationFn: (d: object) => api.put(`/matieres-premieres/${selected!.id}`, d),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-tableau-bord'] });
       fermerModal();
@@ -56,7 +58,7 @@ export default function StockPage() {
 
   const inventaireMutation = useMutation({
     mutationFn: ({ id, stockReel }: { id: string; stockReel: number }) =>
-      api.post(`/stock/matieres/${id}/inventaire`, { stockReel }),
+      api.patch(`/matieres-premieres/${id}/stock`, { quantite: stockReel, type: 'ajustement', motif: 'Inventaire' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-tableau-bord'] });
       fermerModal();
@@ -124,14 +126,16 @@ export default function StockPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Gestion du stock</h1>
-        <button
-          type="button"
-          onClick={ouvrirCreation}
-          className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800"
-        >
-          <Plus size={16} />
-          Nouvelle matière
-        </button>
+        {peutEcrire && (
+          <button
+            type="button"
+            onClick={ouvrirCreation}
+            className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800"
+          >
+            <Plus size={16} />
+            Nouvelle matière
+          </button>
+        )}
       </div>
 
       {/* Alertes */}
@@ -201,23 +205,27 @@ export default function StockPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
-                      <button
-                        type="button"
-                        aria-label="Faire l'inventaire"
-                        onClick={() => ouvrirInventaire(m)}
-                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"
-                        title="Inventaire"
-                      >
-                        <ClipboardList size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Modifier"
-                        onClick={() => ouvrirEdition(m)}
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-                      >
-                        <Pencil size={14} />
-                      </button>
+                      {peutEcrire && (
+                        <button
+                          type="button"
+                          aria-label="Faire l'inventaire"
+                          onClick={() => ouvrirInventaire(m)}
+                          className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"
+                          title="Inventaire"
+                        >
+                          <ClipboardList size={14} />
+                        </button>
+                      )}
+                      {peutEcrire && (
+                        <button
+                          type="button"
+                          aria-label="Modifier"
+                          onClick={() => ouvrirEdition(m)}
+                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

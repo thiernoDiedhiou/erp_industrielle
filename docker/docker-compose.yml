@@ -128,9 +128,24 @@ services:
       timeout: 10s
       retries: 3
 
+  minio:
+    image: minio/minio:latest
+    container_name: saas_erp_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minio_secret}
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Console web MinIO
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
+  minio_data:
   api_logs:
   nginx_logs:

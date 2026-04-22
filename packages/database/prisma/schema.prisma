@@ -9,6 +9,21 @@ generator client {
 }
 
 // ═══════════════════════════════════════════════════════
+// SUPER ADMINS — Équipe Innosoft (cross-tenant)
+// ═══════════════════════════════════════════════════════
+model SuperAdmin {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  nom          String
+  actif        Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt      @map("updated_at")
+
+  @@map("super_admins")
+}
+
+// ═══════════════════════════════════════════════════════
 // TENANTS — Entreprises clientes de la plateforme
 // ═══════════════════════════════════════════════════════
 model Tenant {
@@ -29,6 +44,7 @@ model Tenant {
   updatedAt         DateTime @updatedAt         @map("updated_at")
 
   users         User[]
+  groupes       Groupe[]
   tenantModules TenantModule[]
   settings      Setting[]
   customFields  CustomField[]
@@ -219,23 +235,49 @@ model User {
 }
 
 // ═══════════════════════════════════════════════════════
+// GROUPES & PERMISSIONS (dynamiques par tenant)
+// ═══════════════════════════════════════════════════════
+model Groupe {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  code        String   // correspond au UserRole : admin | direction | commercial | ...
+  nom         String
+  description String?
+  // JSON : { crm: { lire: true, ecrire: true, supprimer: false }, commandes: {...}, ... }
+  permissions Json     @default("{}")
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt      @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, code])
+  @@map("groupes")
+}
+
+// ═══════════════════════════════════════════════════════
 // CRM — Clients et Produits
 // ═══════════════════════════════════════════════════════
 model Client {
-  id        String   @id @default(uuid())
-  tenantId  String   @map("tenant_id")
-  nom       String   @map("nom_entreprise")
-  reference String   @map("code_client")
-  type      String   @default("entreprise") @map("type_client")
-  ninea     String?
-  adresse   String?
-  ville     String?
-  telephone String?
-  email     String?
-  statut    String    @default("actif")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt      @map("updated_at")
-  deletedAt DateTime?                  @map("deleted_at")
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  nom             String    @map("nom_entreprise")
+  reference       String    @map("code_client")
+  type            String    @default("entreprise") @map("type_client")
+  ninea           String?
+  adresse         String?
+  ville           String?
+  telephone       String?
+  email           String?
+  // Nouveaux champs
+  contact         String?   @map("contact_principal")     // Nom du contact commercial
+  commercialId    String?   @map("commercial_id")         // Responsable commercial (userId)
+  plafondCredit   Decimal?  @db.Decimal(15, 2) @map("plafond_credit")    // Plafond de crédit XOF
+  delaiPaiement   Int?      @map("delai_paiement")        // Délai de paiement en jours
+  statut          String    @default("actif")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt      @map("updated_at")
+  deletedAt       DateTime?                  @map("deleted_at")
 
   commandes     Commande[]
   bonsLivraison BonLivraison[]
@@ -246,21 +288,28 @@ model Client {
 }
 
 model Produit {
-  id           String   @id @default(uuid())
-  tenantId     String   @map("tenant_id")
-  reference    String   @map("code_produit")
-  nom          String   @map("designation")
-  categorie    String
-  unite        String   @default("pce") @map("unite_mesure")
-  prixUnitaire Decimal  @default(0) @db.Decimal(15, 2) @map("prix_vente_ht")
-  description  String?  @map("description_technique")
-  actif        Boolean   @default(true) @map("is_active")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  deletedAt    DateTime?                  @map("deleted_at")
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  reference       String    @map("code_produit")
+  nom             String    @map("designation")
+  categorie       String
+  unite           String    @default("pce") @map("unite_mesure")
+  prixUnitaire    Decimal   @default(0) @db.Decimal(15, 2) @map("prix_vente_ht")
+  // Nouveaux champs
+  coutProduction  Decimal?  @db.Decimal(15, 2) @map("cout_production")   // Coût de production estimé
+  poidsUnite      Decimal?  @db.Decimal(10, 3) @map("poids_unite")        // Poids unitaire en kg
+  stockMin        Decimal   @default(0) @db.Decimal(10, 2) @map("stock_min")  // Seuil d'alerte stock
+  stockActuel     Decimal   @default(0) @db.Decimal(10, 2) @map("stock_actuel") // Quantité en stock
+  description     String?   @map("description_technique")
+  actif           Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt      @map("updated_at")
+  deletedAt       DateTime?                  @map("deleted_at")
 
   lignes          LigneCommande[]
   ofs             OrdreFabrication[]
   lignesLivraison LigneLivraison[]
+  boms            BomItem[]          // Nomenclatures dans lesquelles ce produit apparaît
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -268,22 +317,64 @@ model Produit {
 }
 
 // ═══════════════════════════════════════════════════════
+// BOM — Nomenclature produits (Bill of Materials)
+// ═══════════════════════════════════════════════════════
+model Bom {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  nom         String
+  produitFiniId String @map("produit_fini_id")  // Produit fabriqué
+  version     String   @default("1.0")
+  actif       Boolean  @default(true) @map("is_active")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt      @map("updated_at")
+
+  produitFini MatierePremiere? @relation("BomProduitFini", fields: [produitFiniId], references: [id])
+  items       BomItem[]
+
+  @@unique([tenantId, produitFiniId, version])
+  @@index([tenantId])
+  @@map("boms")
+}
+
+model BomItem {
+  id                String  @id @default(uuid())
+  bomId             String  @map("bom_id")
+  matierePremiereId String? @map("matiere_premiere_id") // MP utilisée
+  produitId         String? @map("produit_id")          // Ou produit semi-fini
+  quantite          Decimal @db.Decimal(10, 3)
+  unite             String  @default("kg") @map("unite_mesure")
+  pertes            Decimal @default(0) @db.Decimal(5, 2) @map("taux_pertes_pct") // % de pertes
+  notes             String?
+
+  bom             Bom              @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  matierePremiere MatierePremiere? @relation(fields: [matierePremiereId], references: [id])
+  produit         Produit?         @relation(fields: [produitId], references: [id])
+
+  @@map("bom_items")
+}
+
+// ═══════════════════════════════════════════════════════
 // COMMANDES
 // ═══════════════════════════════════════════════════════
 model Commande {
-  id            String    @id @default(uuid())
-  tenantId      String    @map("tenant_id")
-  reference     String    @map("numero_commande")
-  clientId      String    @map("client_id")
-  statut        String    @default("brouillon")
-  dateLivraison DateTime? @map("date_livraison_souhaitee")
-  totalHT       Decimal   @default(0) @db.Decimal(15, 2) @map("montant_ht")
-  tva           Decimal   @default(0) @db.Decimal(15, 2)
-  totalTTC      Decimal   @default(0) @db.Decimal(15, 2) @map("montant_ttc")
-  notes         String?
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt      @map("updated_at")
-  deletedAt     DateTime?                  @map("deleted_at")
+  id                    String    @id @default(uuid())
+  tenantId              String    @map("tenant_id")
+  reference             String    @map("numero_commande")
+  clientId              String    @map("client_id")
+  statut                String    @default("brouillon")
+  dateLivraison         DateTime? @map("date_livraison_souhaitee")
+  dateLivraisonPrevue   DateTime? @map("date_livraison_prevue")  // Confirmée par production
+  adresseLivraison      String?   @map("adresse_livraison")
+  commercialId          String?   @map("commercial_id")           // User responsable
+  totalHT               Decimal   @default(0) @db.Decimal(15, 2) @map("montant_ht")
+  tva                   Decimal   @default(0) @db.Decimal(15, 2)
+  totalTTC              Decimal   @default(0) @db.Decimal(15, 2) @map("montant_ttc")
+  notes                 String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt      @map("updated_at")
+  deletedAt             DateTime?                  @map("deleted_at")
 
   client        Client               @relation(fields: [clientId], references: [id])
   lignes        LigneCommande[]
@@ -302,6 +393,7 @@ model LigneCommande {
   produitId    String  @map("produit_id")
   quantite     Decimal @db.Decimal(10, 2)
   prixUnitaire Decimal @db.Decimal(15, 2) @map("prix_unitaire_ht")
+  remise       Decimal @default(0) @db.Decimal(5, 2) @map("remise_pct")  // Remise %
   montant      Decimal @db.Decimal(15, 2) @map("montant_ligne_ht")
   description  String?
 
@@ -330,15 +422,22 @@ model CommandeHistorique {
 // FOURNISSEURS
 // ═══════════════════════════════════════════════════════
 model Fournisseur {
-  id        String  @id @default(uuid())
-  tenantId  String  @map("tenant_id")
-  reference String  @map("code_fournisseur")
-  nom       String  @map("nom_entreprise")
-  pays      String  @default("SN")
-  email     String?
-  telephone String?
-  actif     Boolean   @default(true) @map("is_active")
-  deletedAt DateTime?                @map("deleted_at")
+  id                  String    @id @default(uuid())
+  tenantId            String    @map("tenant_id")
+  reference           String    @map("code_fournisseur")
+  nom                 String    @map("nom_entreprise")
+  pays                String    @default("SN")
+  contact             String?   @map("contact_principal")       // Nom du contact commercial
+  email               String?
+  telephone           String?
+  // Nouveaux champs
+  delaiLivraisonMoyen Int?      @map("delai_livraison_moyen")   // Délai moyen en jours
+  noteEvaluation      Decimal?  @db.Decimal(3, 1) @map("note_evaluation")  // Note 0-10
+  conditionsPaiement  String?   @map("conditions_paiement")
+  actif               Boolean   @default(true) @map("is_active")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt      @map("updated_at")
+  deletedAt           DateTime?                  @map("deleted_at")
 
   matieresPrmieres MatierePremiere[]
 
@@ -350,23 +449,28 @@ model Fournisseur {
 // MATIÈRES PREMIÈRES
 // ═══════════════════════════════════════════════════════
 model MatierePremiere {
-  id            String   @id @default(uuid())
-  tenantId      String   @map("tenant_id")
-  reference     String   @map("code_mp")
-  nom           String   @map("designation")
-  type          String   @map("type_mp")
-  fournisseurId String?  @map("fournisseur_id")
-  unite         String   @default("kg") @map("unite_mesure")
-  prixAchat     Decimal  @default(0) @db.Decimal(15, 2) @map("prix_achat_unitaire")
-  stockActuel   Decimal  @default(0) @db.Decimal(10, 2) @map("stock_actuel")
-  stockMinimum  Decimal  @default(0) @db.Decimal(10, 2) @map("stock_minimum")
-  isRecycle     Boolean   @default(false) @map("is_recycle")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  deletedAt     DateTime?                  @map("deleted_at")
+  id                    String    @id @default(uuid())
+  tenantId              String    @map("tenant_id")
+  reference             String    @map("code_mp")
+  nom                   String    @map("designation")
+  type                  String    @map("type_mp")
+  fournisseurId         String?   @map("fournisseur_id")
+  unite                 String    @default("kg") @map("unite_mesure")
+  prixAchat             Decimal   @default(0) @db.Decimal(15, 2) @map("prix_achat_unitaire")
+  stockActuel           Decimal   @default(0) @db.Decimal(10, 2) @map("stock_actuel")
+  stockMinimum          Decimal   @default(0) @db.Decimal(10, 2) @map("stock_minimum")
+  // Nouveau champ
+  delaiApprovisionnement Int?     @map("delai_approvisionnement") // Délai en jours
+  isRecycle             Boolean   @default(false) @map("is_recycle")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt      @map("updated_at")
+  deletedAt             DateTime?                  @map("deleted_at")
 
   fournisseur   Fournisseur?  @relation(fields: [fournisseurId], references: [id])
   consommations ConsommationMP[]
   mouvements    MouvementStock[]
+  bomItems      BomItem[]
+  bomsComme     Bom[]            @relation("BomProduitFini")
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -377,16 +481,22 @@ model MatierePremiere {
 // MACHINES
 // ═══════════════════════════════════════════════════════
 model Machine {
-  id        String    @id @default(uuid())
-  tenantId  String    @map("tenant_id")
-  code      String
-  nom       String    @map("nom_machine")
-  type      String    @map("type_machine")
-  statut    String    @default("disponible")
-  capacite  Decimal?  @db.Decimal(10, 2) @map("capacite_production")
-  unite     String?
-  actif     Boolean   @default(true) @map("is_active")
-  deletedAt DateTime?                @map("deleted_at")
+  id                      String    @id @default(uuid())
+  tenantId                String    @map("tenant_id")
+  code                    String
+  nom                     String    @map("nom_machine")
+  type                    String    @map("type_machine")
+  statut                  String    @default("disponible")
+  capacite                Decimal?  @db.Decimal(10, 2) @map("capacite_production")
+  unite                   String?
+  // Nouveaux champs
+  localisation            String?   @map("localisation")              // Zone / atelier
+  dateDerniereMaintenance DateTime? @map("date_derniere_maintenance")
+  prochaineMaintenanceDate DateTime? @map("prochaine_maintenance_date")
+  actif                   Boolean   @default(true) @map("is_active")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt      @map("updated_at")
+  deletedAt               DateTime?                  @map("deleted_at")
 
   ofs OrdreFabrication[]
 
@@ -399,21 +509,25 @@ model Machine {
 // ORDRES DE FABRICATION
 // ═══════════════════════════════════════════════════════
 model OrdreFabrication {
-  id             String    @id @default(uuid())
-  tenantId       String    @map("tenant_id")
-  reference      String    @map("numero_of")
-  commandeId     String?   @map("commande_id")
-  produitId      String    @map("produit_id")
-  produitFini    String    @map("produit_fini")
-  quantitePrevue Decimal   @db.Decimal(10, 2) @map("quantite_prevue")
-  quantiteProduite Decimal @default(0) @db.Decimal(10, 2) @map("quantite_produite")
-  statut         String    @default("planifie")
-  machineId      String?   @map("machine_id")
-  dateDebut      DateTime? @map("date_debut_reelle")
-  dateFin        DateTime? @map("date_fin_reelle")
-  notes          String?   @map("notes_production")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt      @map("updated_at")
+  id               String    @id @default(uuid())
+  tenantId         String    @map("tenant_id")
+  reference        String    @map("numero_of")
+  commandeId       String?   @map("commande_id")
+  produitId        String    @map("produit_id")
+  produitFini      String    @map("produit_fini")
+  quantitePrevue   Decimal   @db.Decimal(10, 2) @map("quantite_prevue")
+  quantiteProduite Decimal   @default(0) @db.Decimal(10, 2) @map("quantite_produite")
+  // Nouveaux champs
+  quantiteRebut    Decimal   @default(0) @db.Decimal(10, 2) @map("quantite_rebut")  // Quantité rebutée
+  dateDebutPrevue  DateTime? @map("date_debut_prevue")    // Date de début planifiée
+  dateFinPrevue    DateTime? @map("date_fin_prevue")      // Date de fin planifiée
+  statut           String    @default("planifie")
+  machineId        String?   @map("machine_id")
+  dateDebut        DateTime? @map("date_debut_reelle")    // Date réelle de début
+  dateFin          DateTime? @map("date_fin_reelle")      // Date réelle de fin
+  notes            String?   @map("notes_production")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt      @map("updated_at")
 
   machine       Machine?       @relation(fields: [machineId], references: [id])
   produit       Produit        @relation(fields: [produitId], references: [id])
@@ -431,8 +545,8 @@ model ConsommationMP {
   tenantId            String   @map("tenant_id")
   quantiteConsommee   Decimal  @db.Decimal(10, 2) @map("quantite_reelle")
 
-  of             OrdreFabrication @relation(fields: [ordreFabricationId], references: [id], onDelete: Cascade)
-  matierePremiere MatierePremiere @relation(fields: [matierePremiereId], references: [id])
+  of              OrdreFabrication @relation(fields: [ordreFabricationId], references: [id], onDelete: Cascade)
+  matierePremiere MatierePremiere  @relation(fields: [matierePremiereId], references: [id])
 
   @@map("consommations_mp")
 }
@@ -461,18 +575,18 @@ model MouvementStock {
 // FACTURATION
 // ═══════════════════════════════════════════════════════
 model Facture {
-  id           String   @id @default(uuid())
-  tenantId     String   @map("tenant_id")
-  reference    String   @map("numero_facture")
-  commandeId   String   @map("commande_id")
-  statut       String   @default("emise")      @map("statut_paiement")
-  totalHT      Decimal  @db.Decimal(15, 2)     @map("montant_ht")
-  tva          Decimal  @db.Decimal(15, 2)     @map("montant_tva")
-  totalTTC     Decimal  @db.Decimal(15, 2)     @map("montant_ttc")
-  dateEcheance DateTime                         @map("date_echeance")
-  pdfUrl       String?                          @map("pdf_url")
-  createdAt    DateTime  @default(now())        @map("created_at")
-  deletedAt    DateTime?                         @map("deleted_at")
+  id           String    @id @default(uuid())
+  tenantId     String    @map("tenant_id")
+  reference    String    @map("numero_facture")
+  commandeId   String    @map("commande_id")
+  statut       String    @default("emise")      @map("statut_paiement")
+  totalHT      Decimal   @db.Decimal(15, 2)     @map("montant_ht")
+  tva          Decimal   @db.Decimal(15, 2)     @map("montant_tva")
+  totalTTC     Decimal   @db.Decimal(15, 2)     @map("montant_ttc")
+  dateEcheance DateTime                          @map("date_echeance")
+  pdfUrl       String?                           @map("pdf_url")
+  createdAt    DateTime  @default(now())         @map("created_at")
+  deletedAt    DateTime?                          @map("deleted_at")
 
   commande  Commande   @relation(fields: [commandeId], references: [id])
   paiements Paiement[]
@@ -482,13 +596,13 @@ model Facture {
 }
 
 model Paiement {
-  id          String   @id @default(uuid())
-  factureId   String   @map("facture_id")
-  tenantId    String   @map("tenant_id")
-  montant     Decimal  @db.Decimal(15, 2)
-  mode        String   @map("mode_paiement")
-  reference   String?  @map("reference_transaction")
-  notes       String?
+  id           String   @id @default(uuid())
+  factureId    String   @map("facture_id")
+  tenantId     String   @map("tenant_id")
+  montant      Decimal  @db.Decimal(15, 2)
+  mode         String   @map("mode_paiement")  // especes | virement | cheque | mobile_money
+  reference    String?  @map("reference_transaction")
+  notes        String?
   datePaiement DateTime @default(now()) @map("date_paiement")
 
   facture Facture @relation(fields: [factureId], references: [id])
@@ -505,9 +619,12 @@ model BonLivraison {
   reference        String    @map("numero_bl")
   commandeId       String?   @map("commande_id")
   clientId         String    @map("client_id")
-  statut           String    @default("prepare")   // prepare | expedie | livre | annule
+  statut           String    @default("prepare")  // prepare | expedie | livre | annule
   adresseLivraison String?   @map("adresse_livraison")
   transporteur     String?
+  // Nouveaux champs
+  chauffeur        String?   @map("chauffeur")    // Nom du chauffeur
+  vehicule         String?   @map("vehicule")     // Immatriculation
   dateExpedition   DateTime? @map("date_expedition")
   dateLivraison    DateTime? @map("date_livraison_reelle")
   notes            String?
@@ -545,10 +662,10 @@ model AuditLog {
   userId    String?  @map("user_id")
   userEmail String?  @map("user_email")
   action    String   // CREATE | UPDATE | DELETE | LOGIN | LOGOUT | EXPORT
-  entite    String   @map("entity")       // Client | Commande | Facture | ...
+  entite    String   @map("entity")
   entiteId  String?  @map("entity_id")
-  avant     Json?    @map("before")       // état avant modification
-  apres     Json?    @map("after")        // état après modification
+  avant     Json?    @map("before")
+  apres     Json?    @map("after")
   ip        String?  @map("ip_address")
   userAgent String?  @map("user_agent")
   createdAt DateTime @default(now()) @map("created_at")
@@ -570,7 +687,7 @@ model RecyclageCollecte {
   unite        String   @default("kg")
   sourceAdresse String? @map("source")
   collecteur   String?
-  statut       String   @default("collecte")
+  statut       String   @default("collecte")  // collecte | traitement | valorise
   notes        String?
   dateCollecte DateTime @default(now()) @map("date_collecte")
   createdAt    DateTime @default(now()) @map("created_at")

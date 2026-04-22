@@ -20,9 +20,9 @@ export declare class ProductionService {
             } & {
                 id: string;
                 tenantId: string;
-                quantiteConsommee: import(".prisma/client/runtime/library").Decimal;
                 ordreFabricationId: string;
                 matierePremiereId: string;
+                quantiteConsommee: import(".prisma/client/runtime/library").Decimal;
             })[];
         } & {
             id: string;
@@ -32,11 +32,14 @@ export declare class ProductionService {
             updatedAt: Date;
             statut: string;
             notes: string | null;
-            produitId: string;
             commandeId: string | null;
+            produitId: string;
             produitFini: string;
             quantitePrevue: import(".prisma/client/runtime/library").Decimal;
             quantiteProduite: import(".prisma/client/runtime/library").Decimal;
+            quantiteRebut: import(".prisma/client/runtime/library").Decimal;
+            dateDebutPrevue: Date | null;
+            dateFinPrevue: Date | null;
             machineId: string | null;
             dateDebut: Date | null;
             dateFin: Date | null;
@@ -49,14 +52,19 @@ export declare class ProductionService {
         machine: {
             id: string;
             tenantId: string;
+            createdAt: Date;
             type: string;
             unite: string | null;
             nom: string;
             actif: boolean;
+            updatedAt: Date;
             deletedAt: Date | null;
             code: string;
             statut: string;
             capacite: import(".prisma/client/runtime/library").Decimal | null;
+            localisation: string | null;
+            dateDerniereMaintenance: Date | null;
+            prochaineMaintenanceDate: Date | null;
         } | null;
         consommations: ({
             matierePremiere: {
@@ -69,17 +77,19 @@ export declare class ProductionService {
                 unite: string;
                 stockMinimum: import(".prisma/client/runtime/library").Decimal;
                 nom: string;
+                updatedAt: Date;
                 deletedAt: Date | null;
                 fournisseurId: string | null;
                 prixAchat: import(".prisma/client/runtime/library").Decimal;
+                delaiApprovisionnement: number | null;
                 isRecycle: boolean;
             };
         } & {
             id: string;
             tenantId: string;
-            quantiteConsommee: import(".prisma/client/runtime/library").Decimal;
             ordreFabricationId: string;
             matierePremiereId: string;
+            quantiteConsommee: import(".prisma/client/runtime/library").Decimal;
         })[];
     } & {
         id: string;
@@ -89,11 +99,14 @@ export declare class ProductionService {
         updatedAt: Date;
         statut: string;
         notes: string | null;
-        produitId: string;
         commandeId: string | null;
+        produitId: string;
         produitFini: string;
         quantitePrevue: import(".prisma/client/runtime/library").Decimal;
         quantiteProduite: import(".prisma/client/runtime/library").Decimal;
+        quantiteRebut: import(".prisma/client/runtime/library").Decimal;
+        dateDebutPrevue: Date | null;
+        dateFinPrevue: Date | null;
         machineId: string | null;
         dateDebut: Date | null;
         dateFin: Date | null;
@@ -115,11 +128,14 @@ export declare class ProductionService {
         updatedAt: Date;
         statut: string;
         notes: string | null;
-        produitId: string;
         commandeId: string | null;
+        produitId: string;
         produitFini: string;
         quantitePrevue: import(".prisma/client/runtime/library").Decimal;
         quantiteProduite: import(".prisma/client/runtime/library").Decimal;
+        quantiteRebut: import(".prisma/client/runtime/library").Decimal;
+        dateDebutPrevue: Date | null;
+        dateFinPrevue: Date | null;
         machineId: string | null;
         dateDebut: Date | null;
         dateFin: Date | null;
@@ -132,11 +148,14 @@ export declare class ProductionService {
         updatedAt: Date;
         statut: string;
         notes: string | null;
-        produitId: string;
         commandeId: string | null;
+        produitId: string;
         produitFini: string;
         quantitePrevue: import(".prisma/client/runtime/library").Decimal;
         quantiteProduite: import(".prisma/client/runtime/library").Decimal;
+        quantiteRebut: import(".prisma/client/runtime/library").Decimal;
+        dateDebutPrevue: Date | null;
+        dateFinPrevue: Date | null;
         machineId: string | null;
         dateDebut: Date | null;
         dateFin: Date | null;
@@ -147,21 +166,26 @@ export declare class ProductionService {
     }): Promise<{
         id: string;
         tenantId: string;
-        quantiteConsommee: import(".prisma/client/runtime/library").Decimal;
         ordreFabricationId: string;
         matierePremiereId: string;
+        quantiteConsommee: import(".prisma/client/runtime/library").Decimal;
     }>;
     getMachines(tenantId: string): Promise<{
         id: string;
         tenantId: string;
+        createdAt: Date;
         type: string;
         unite: string | null;
         nom: string;
         actif: boolean;
+        updatedAt: Date;
         deletedAt: Date | null;
         code: string;
         statut: string;
         capacite: import(".prisma/client/runtime/library").Decimal | null;
+        localisation: string | null;
+        dateDerniereMaintenance: Date | null;
+        prochaineMaintenanceDate: Date | null;
     }[]>;
     creerMachine(tenantId: string, data: {
         code: string;
@@ -172,14 +196,19 @@ export declare class ProductionService {
     }): Promise<{
         id: string;
         tenantId: string;
+        createdAt: Date;
         type: string;
         unite: string | null;
         nom: string;
         actif: boolean;
+        updatedAt: Date;
         deletedAt: Date | null;
         code: string;
         statut: string;
         capacite: import(".prisma/client/runtime/library").Decimal | null;
+        localisation: string | null;
+        dateDerniereMaintenance: Date | null;
+        prochaineMaintenanceDate: Date | null;
     }>;
     getMatieresPrmieres(tenantId: string, opts: {
         page?: number;
@@ -199,9 +228,11 @@ export declare class ProductionService {
             unite: string;
             stockMinimum: import(".prisma/client/runtime/library").Decimal;
             nom: string;
+            updatedAt: Date;
             deletedAt: Date | null;
             fournisseurId: string | null;
             prixAchat: import(".prisma/client/runtime/library").Decimal;
+            delaiApprovisionnement: number | null;
             isRecycle: boolean;
         })[];
         total: number;

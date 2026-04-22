@@ -30,11 +30,17 @@ let CrmController = class CrmController {
     constructor(crmService) {
         this.crmService = crmService;
     }
-    getClients(user, query) {
-        return this.crmService.getClients(user.tenantId, query);
+    getClients(user, query, type) {
+        return this.crmService.getClients(user.tenantId, { ...query, type });
     }
     getClient(user, id) {
         return this.crmService.getClient(user.tenantId, id);
+    }
+    getClientCommandes(user, id, query) {
+        return this.crmService.getClientCommandes(user.tenantId, id, query);
+    }
+    getClientFactures(user, id, query) {
+        return this.crmService.getClientFactures(user.tenantId, id, query);
     }
     creerClient(user, dto) {
         return this.crmService.creerClient(user.tenantId, dto);
@@ -62,21 +68,43 @@ exports.CrmController = CrmController;
 __decorate([
     (0, common_1.Get)('clients'),
     (0, swagger_1.ApiOperation)({ summary: 'Liste des clients paginée' }),
+    (0, swagger_1.ApiQuery)({ name: 'type', required: false, enum: create_client_dto_1.TYPES_CLIENT }),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Query)()),
+    __param(2, (0, common_1.Query)('type')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, pagination_query_dto_1.PaginationQueryDto]),
+    __metadata("design:paramtypes", [Object, pagination_query_dto_1.PaginationQueryDto, String]),
     __metadata("design:returntype", void 0)
 ], CrmController.prototype, "getClients", null);
 __decorate([
     (0, common_1.Get)('clients/:id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Détail d\'un client' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Détail d\'un client avec 5 dernières commandes' }),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], CrmController.prototype, "getClient", null);
+__decorate([
+    (0, common_1.Get)('clients/:id/commandes'),
+    (0, swagger_1.ApiOperation)({ summary: 'Historique complet des commandes d\'un client' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, pagination_query_dto_1.PaginationQueryDto]),
+    __metadata("design:returntype", void 0)
+], CrmController.prototype, "getClientCommandes", null);
+__decorate([
+    (0, common_1.Get)('clients/:id/factures'),
+    (0, swagger_1.ApiOperation)({ summary: 'Historique des factures et encours d\'un client' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, pagination_query_dto_1.PaginationQueryDto]),
+    __metadata("design:returntype", void 0)
+], CrmController.prototype, "getClientFactures", null);
 __decorate([
     (0, common_1.Post)('clients'),
     (0, roles_decorator_1.Roles)(shared_1.UserRole.ADMIN, shared_1.UserRole.COMMERCIAL),

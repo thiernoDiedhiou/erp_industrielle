@@ -123,7 +123,24 @@ export declare class ConfigEngineController {
         actif: boolean;
     })[]>;
     getWorkflow(user: JwtPayload, entite: string): Promise<{
-        [x: string]: ({
+        [x: string]: {
+            id: string;
+            code: string;
+            libelle: string;
+            couleur: string | null;
+            ordre: number;
+            workflowId: string;
+            etapInitiale: boolean;
+            etapFinale: boolean;
+        }[] | {
+            id: string;
+            libelle: string;
+            workflowId: string;
+            etatSourceId: string;
+            etatCibleId: string;
+            rolesAutorises: string[];
+            needsApproval: boolean;
+        }[] | ({
             id: string;
             code: string;
             libelle: string;
@@ -157,24 +174,7 @@ export declare class ConfigEngineController {
             etatCibleId: string;
             rolesAutorises: string[];
             needsApproval: boolean;
-        })[] | {
-            id: string;
-            code: string;
-            libelle: string;
-            couleur: string | null;
-            ordre: number;
-            workflowId: string;
-            etapInitiale: boolean;
-            etapFinale: boolean;
-        }[] | {
-            id: string;
-            libelle: string;
-            workflowId: string;
-            etatSourceId: string;
-            etatCibleId: string;
-            rolesAutorises: string[];
-            needsApproval: boolean;
-        }[];
+        })[];
         [x: number]: never;
         [x: symbol]: never;
     } & {

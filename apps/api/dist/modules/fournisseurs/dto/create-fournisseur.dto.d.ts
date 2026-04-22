@@ -3,4 +3,8 @@ export declare class CreateFournisseurDto {
     email?: string;
     telephone?: string;
     pays?: string;
+    contactPrincipal?: string;
+    delaiLivraisonMoyen?: number;
+    noteEvaluation?: number;
+    conditionsPaiement?: string;
 }

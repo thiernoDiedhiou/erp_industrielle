@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
-import { Plus, Search, Pencil, Trash2, X, Layers, AlertTriangle, ArrowDown, ArrowUp, SlidersHorizontal } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, X, Layers, AlertTriangle, ArrowDown, ArrowUp, SlidersHorizontal, Eye } from 'lucide-react';
+import { usePermissions } from '@/lib/permissions-context';
 
 interface Fournisseur { id: string; nom: string; reference: string; }
 
@@ -37,8 +38,10 @@ export default function MatieresPremiereesPage() {
   const [formData, setFormData] = useState(FORM_VIDE);
   const [formStock, setFormStock] = useState(FORM_STOCK_VIDE);
   const [confirmDelete, setConfirmDelete] = useState<MatierePremiere | null>(null);
+  const [detailMP, setDetailMP] = useState<MatierePremiere | null>(null);
   const qc = useQueryClient();
   const toast = useToast();
+  const { peutEcrire, peutSupprimer } = usePermissions('matieres-premieres');
 
   const { data: mpData, isLoading } = useQuery({
     queryKey: ['matieres-premieres', search, filtreCritique],
@@ -118,10 +121,12 @@ export default function MatieresPremiereesPage() {
             </p>
           )}
         </div>
-        <button type="button" onClick={ouvrirCreation}
-          className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800">
-          <Plus size={16} /> Nouvelle MP
-        </button>
+        {peutEcrire && (
+          <button type="button" onClick={ouvrirCreation}
+            className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800">
+            <Plus size={16} /> Nouvelle MP
+          </button>
+        )}
       </div>
 
       {/* Filtres */}
@@ -191,18 +196,28 @@ export default function MatieresPremiereesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">
-                        <button type="button" title="Mouvement stock" onClick={() => ouvrirStock(mp)}
-                          className="p-1.5 rounded hover:bg-green-50 text-gray-400 hover:text-green-600">
-                          <SlidersHorizontal size={14} />
+                        <button type="button" aria-label="Voir le détail" onClick={() => setDetailMP(mp)}
+                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+                          <Eye size={14} />
                         </button>
-                        <button type="button" aria-label="Modifier" onClick={() => ouvrirEdition(mp)}
-                          className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
-                          <Pencil size={14} />
-                        </button>
-                        <button type="button" aria-label="Supprimer" onClick={() => setConfirmDelete(mp)}
-                          className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600">
-                          <Trash2 size={14} />
-                        </button>
+                        {peutEcrire && (
+                          <button type="button" title="Mouvement stock" onClick={() => ouvrirStock(mp)}
+                            className="p-1.5 rounded hover:bg-green-50 text-gray-400 hover:text-green-600">
+                            <SlidersHorizontal size={14} />
+                          </button>
+                        )}
+                        {peutEcrire && (
+                          <button type="button" aria-label="Modifier" onClick={() => ouvrirEdition(mp)}
+                            className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        {peutSupprimer && (
+                          <button type="button" aria-label="Supprimer" onClick={() => setConfirmDelete(mp)}
+                            className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -213,6 +228,55 @@ export default function MatieresPremiereesPage() {
           {mpData?.items?.length === 0 && (
             <div className="text-center py-8 text-gray-400 text-sm">Aucune matière première trouvée</div>
           )}
+        </div>
+      )}
+
+      {/* Modal détail matière première */}
+      {detailMP && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${detailMP.critique ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                  <Layers size={18} />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                    {detailMP.nom}
+                    {detailMP.isRecycle && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 rounded">recyclé</span>}
+                  </h2>
+                  <p className="text-xs text-gray-400">{detailMP.reference}</p>
+                </div>
+              </div>
+              <button type="button" aria-label="Fermer" onClick={() => setDetailMP(null)}>
+                <X size={18} className="text-gray-400 hover:text-gray-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div><p className="text-xs text-gray-400">Type</p><p className="font-medium text-gray-700">{detailMP.type}</p></div>
+                <div><p className="text-xs text-gray-400">Unité</p><p className="font-medium text-gray-700">{detailMP.unite}</p></div>
+                <div>
+                  <p className="text-xs text-gray-400">Stock actuel</p>
+                  <p className={`font-bold ${detailMP.critique ? 'text-red-600' : 'text-gray-800'}`}>
+                    {Number(detailMP.stockActuel).toLocaleString('fr-FR')} {detailMP.unite}
+                    {detailMP.critique && <AlertTriangle size={13} className="inline ml-1 text-red-500" />}
+                  </p>
+                </div>
+                <div><p className="text-xs text-gray-400">Stock minimum</p><p className="font-medium text-gray-700">{Number(detailMP.stockMinimum).toLocaleString('fr-FR')} {detailMP.unite}</p></div>
+                <div><p className="text-xs text-gray-400">Prix achat</p><p className="font-medium text-gray-700">{Number(detailMP.prixAchat).toLocaleString('fr-FR')} FCFA</p></div>
+                {detailMP.fournisseur && (
+                  <div><p className="text-xs text-gray-400">Fournisseur</p><p className="font-medium text-gray-700">{detailMP.fournisseur.nom}</p></div>
+                )}
+              </div>
+            </div>
+            <div className="px-6 pb-5">
+              <button type="button" onClick={() => setDetailMP(null)}
+                className="w-full border py-2 rounded-lg text-sm hover:bg-gray-50">
+                Fermer
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

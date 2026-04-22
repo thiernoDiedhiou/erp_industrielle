@@ -33,11 +33,13 @@ export declare class LogistiqueController {
             statut: string;
             clientId: string;
             dateLivraison: Date | null;
+            adresseLivraison: string | null;
             notes: string | null;
             commandeId: string | null;
-            adresseLivraison: string | null;
             transporteur: string | null;
             dateExpedition: Date | null;
+            chauffeur: string | null;
+            vehicule: string | null;
         })[];
         total: number;
         page: number;
@@ -53,12 +55,16 @@ export declare class LogistiqueController {
             nom: string;
             email: string | null;
             telephone: string | null;
-            adresse: string | null;
-            ville: string | null;
             updatedAt: Date;
             deletedAt: Date | null;
+            adresse: string | null;
+            ville: string | null;
             ninea: string | null;
             statut: string;
+            contact: string | null;
+            commercialId: string | null;
+            plafondCredit: import(".prisma/client/runtime/library").Decimal | null;
+            delaiPaiement: number | null;
         };
         commande: {
             id: string;
@@ -87,11 +93,13 @@ export declare class LogistiqueController {
         statut: string;
         clientId: string;
         dateLivraison: Date | null;
+        adresseLivraison: string | null;
         notes: string | null;
         commandeId: string | null;
-        adresseLivraison: string | null;
         transporteur: string | null;
         dateExpedition: Date | null;
+        chauffeur: string | null;
+        vehicule: string | null;
     }>;
     creer(user: JwtPayload, dto: CreateBonLivraisonDto): Promise<{
         id: string;
@@ -102,11 +110,13 @@ export declare class LogistiqueController {
         statut: string;
         clientId: string;
         dateLivraison: Date | null;
+        adresseLivraison: string | null;
         notes: string | null;
         commandeId: string | null;
-        adresseLivraison: string | null;
         transporteur: string | null;
         dateExpedition: Date | null;
+        chauffeur: string | null;
+        vehicule: string | null;
     }>;
     modifier(user: JwtPayload, id: string, dto: Partial<CreateBonLivraisonDto>): Promise<{
         id: string;
@@ -117,11 +127,13 @@ export declare class LogistiqueController {
         statut: string;
         clientId: string;
         dateLivraison: Date | null;
+        adresseLivraison: string | null;
         notes: string | null;
         commandeId: string | null;
-        adresseLivraison: string | null;
         transporteur: string | null;
         dateExpedition: Date | null;
+        chauffeur: string | null;
+        vehicule: string | null;
     }>;
     changerStatut(user: JwtPayload, id: string, statut: string): Promise<{
         id: string;
@@ -132,10 +144,12 @@ export declare class LogistiqueController {
         statut: string;
         clientId: string;
         dateLivraison: Date | null;
+        adresseLivraison: string | null;
         notes: string | null;
         commandeId: string | null;
-        adresseLivraison: string | null;
         transporteur: string | null;
         dateExpedition: Date | null;
+        chauffeur: string | null;
+        vehicule: string | null;
     }>;
 }

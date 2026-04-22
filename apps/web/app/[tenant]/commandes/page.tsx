@@ -6,15 +6,27 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
 import { Plus, Eye } from 'lucide-react';
+import { usePermissions } from '@/lib/permissions-context';
 
 const STATUTS_COULEURS: Record<string, string> = {
-  brouillon: 'bg-gray-100 text-gray-700',
-  confirmee: 'bg-blue-100 text-blue-700',
+  brouillon:     'bg-gray-100 text-gray-700',
+  confirmee:     'bg-blue-100 text-blue-700',
   en_production: 'bg-orange-100 text-orange-700',
-  prete: 'bg-yellow-100 text-yellow-700',
-  livree: 'bg-green-100 text-green-700',
-  facturee: 'bg-purple-100 text-purple-700',
-  annulee: 'bg-red-100 text-red-700',
+  prete:         'bg-yellow-100 text-yellow-700',
+  livree:        'bg-green-100 text-green-700',
+  facturee:      'bg-purple-100 text-purple-700',
+  annulee:       'bg-red-100 text-red-700',
+};
+
+const STATUTS_LABELS: Record<string, string> = {
+  '':            'Toutes',
+  brouillon:     'Brouillon',
+  confirmee:     'Confirmée',
+  en_production: 'En production',
+  prete:         'Prête',
+  livree:        'Livrée',
+  facturee:      'Facturée',
+  annulee:       'Annulée',
 };
 
 interface Commande {
@@ -33,6 +45,7 @@ export default function CommandesPage() {
   const [filtreStatut, setFiltreStatut] = useState('');
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { peutEcrire } = usePermissions('commandes');
 
   const { data, isLoading } = useQuery({
     queryKey: ['commandes', filtreStatut],
@@ -61,19 +74,21 @@ export default function CommandesPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Commandes</h1>
-        <button
-          type="button"
-          onClick={() => router.push(`/${params.tenant}/commandes/nouvelle`)}
-          className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800"
-        >
-          <Plus size={16} />
-          Nouvelle commande
-        </button>
+        {peutEcrire && (
+          <button
+            type="button"
+            onClick={() => router.push(`/${params.tenant}/commandes/nouvelle`)}
+            className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-800"
+          >
+            <Plus size={16} />
+            Nouvelle commande
+          </button>
+        )}
       </div>
 
       {/* Filtres statuts */}
       <div className="flex gap-2 flex-wrap">
-        {['', 'brouillon', 'confirmee', 'en_production', 'livree', 'facturee'].map((s) => (
+        {(['', 'brouillon', 'confirmee', 'en_production', 'prete', 'livree', 'facturee'] as const).map((s) => (
           <button
             key={s}
             type="button"
@@ -84,7 +99,7 @@ export default function CommandesPage() {
                 : 'border-gray-300 text-gray-600 hover:bg-gray-50'
             }`}
           >
-            {s || 'Toutes'}
+            {STATUTS_LABELS[s]}
           </button>
         ))}
       </div>
@@ -119,7 +134,7 @@ export default function CommandesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs ${STATUTS_COULEURS[cmd.statut] || 'bg-gray-100 text-gray-600'}`}>
-                      {cmd.statut}
+                      {STATUTS_LABELS[cmd.statut] ?? cmd.statut}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400">

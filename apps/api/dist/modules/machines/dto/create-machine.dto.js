@@ -53,4 +53,22 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Boolean)
 ], CreateMachineDto.prototype, "actif", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Atelier A — Zone plastique' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateMachineDto.prototype, "localisation", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '2026-01-15' }),
+    (0, class_validator_1.IsDateString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateMachineDto.prototype, "dateDerniereMaintenance", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '2026-07-15' }),
+    (0, class_validator_1.IsDateString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateMachineDto.prototype, "prochaineMaintenanceDate", void 0);
 //# sourceMappingURL=create-machine.dto.js.map

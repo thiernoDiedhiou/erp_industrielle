@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsBoolean, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -44,4 +44,11 @@ export class CreateMatierePremiereDto {
   @IsBoolean()
   @IsOptional()
   isRecycle?: boolean;
+
+  @ApiPropertyOptional({ example: 7, description: 'Délai d\'approvisionnement en jours' })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  @Type(() => Number)
+  delaiApprovisionnement?: number;
 }

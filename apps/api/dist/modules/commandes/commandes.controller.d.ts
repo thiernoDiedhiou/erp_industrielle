@@ -19,10 +19,11 @@ export declare class CommandesController {
                 id: string;
                 description: string | null;
                 montant: import(".prisma/client/runtime/library").Decimal;
+                commandeId: string;
                 prixUnitaire: import(".prisma/client/runtime/library").Decimal;
                 produitId: string;
                 quantite: import(".prisma/client/runtime/library").Decimal;
-                commandeId: string;
+                remise: import(".prisma/client/runtime/library").Decimal;
             })[];
         } & {
             id: string;
@@ -32,8 +33,11 @@ export declare class CommandesController {
             updatedAt: Date;
             deletedAt: Date | null;
             statut: string;
+            commercialId: string | null;
             clientId: string;
             dateLivraison: Date | null;
+            dateLivraisonPrevue: Date | null;
+            adresseLivraison: string | null;
             totalHT: import(".prisma/client/runtime/library").Decimal;
             tva: import(".prisma/client/runtime/library").Decimal;
             totalTTC: import(".prisma/client/runtime/library").Decimal;
@@ -53,12 +57,16 @@ export declare class CommandesController {
             nom: string;
             email: string | null;
             telephone: string | null;
-            adresse: string | null;
-            ville: string | null;
             updatedAt: Date;
             deletedAt: Date | null;
+            adresse: string | null;
+            ville: string | null;
             ninea: string | null;
             statut: string;
+            contact: string | null;
+            commercialId: string | null;
+            plafondCredit: import(".prisma/client/runtime/library").Decimal | null;
+            delaiPaiement: number | null;
         };
         lignes: ({
             produit: {
@@ -67,21 +75,27 @@ export declare class CommandesController {
                 createdAt: Date;
                 description: string | null;
                 reference: string;
+                stockActuel: import(".prisma/client/runtime/library").Decimal;
                 unite: string;
                 nom: string;
                 actif: boolean;
+                updatedAt: Date;
                 deletedAt: Date | null;
                 categorie: string;
                 prixUnitaire: import(".prisma/client/runtime/library").Decimal;
+                coutProduction: import(".prisma/client/runtime/library").Decimal | null;
+                poidsUnite: import(".prisma/client/runtime/library").Decimal | null;
+                stockMin: import(".prisma/client/runtime/library").Decimal;
             };
         } & {
             id: string;
             description: string | null;
             montant: import(".prisma/client/runtime/library").Decimal;
+            commandeId: string;
             prixUnitaire: import(".prisma/client/runtime/library").Decimal;
             produitId: string;
             quantite: import(".prisma/client/runtime/library").Decimal;
-            commandeId: string;
+            remise: import(".prisma/client/runtime/library").Decimal;
         })[];
         historique: {
             id: string;
@@ -101,8 +115,11 @@ export declare class CommandesController {
         updatedAt: Date;
         deletedAt: Date | null;
         statut: string;
+        commercialId: string | null;
         clientId: string;
         dateLivraison: Date | null;
+        dateLivraisonPrevue: Date | null;
+        adresseLivraison: string | null;
         totalHT: import(".prisma/client/runtime/library").Decimal;
         tva: import(".prisma/client/runtime/library").Decimal;
         totalTTC: import(".prisma/client/runtime/library").Decimal;
@@ -120,10 +137,11 @@ export declare class CommandesController {
             id: string;
             description: string | null;
             montant: import(".prisma/client/runtime/library").Decimal;
+            commandeId: string;
             prixUnitaire: import(".prisma/client/runtime/library").Decimal;
             produitId: string;
             quantite: import(".prisma/client/runtime/library").Decimal;
-            commandeId: string;
+            remise: import(".prisma/client/runtime/library").Decimal;
         })[];
     } & {
         id: string;
@@ -133,8 +151,11 @@ export declare class CommandesController {
         updatedAt: Date;
         deletedAt: Date | null;
         statut: string;
+        commercialId: string | null;
         clientId: string;
         dateLivraison: Date | null;
+        dateLivraisonPrevue: Date | null;
+        adresseLivraison: string | null;
         totalHT: import(".prisma/client/runtime/library").Decimal;
         tva: import(".prisma/client/runtime/library").Decimal;
         totalTTC: import(".prisma/client/runtime/library").Decimal;
@@ -151,8 +172,11 @@ export declare class CommandesController {
         updatedAt: Date;
         deletedAt: Date | null;
         statut: string;
+        commercialId: string | null;
         clientId: string;
         dateLivraison: Date | null;
+        dateLivraisonPrevue: Date | null;
+        adresseLivraison: string | null;
         totalHT: import(".prisma/client/runtime/library").Decimal;
         tva: import(".prisma/client/runtime/library").Decimal;
         totalTTC: import(".prisma/client/runtime/library").Decimal;

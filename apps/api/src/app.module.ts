@@ -25,6 +25,10 @@ import { FournisseursModule } from './modules/fournisseurs/fournisseurs.module';
 import { MachinesModule } from './modules/machines/machines.module';
 import { MatieresPremiereModule } from './modules/matieres-premieres/matieres-premieres.module';
 import { LogistiqueModule } from './modules/logistique/logistique.module';
+import { BomModule } from './modules/bom/bom.module';
+import { UsersModule } from './modules/users/users.module';
+import { GroupesModule } from './modules/groupes/groupes.module';
+import { SuperAdminModule } from './modules/super-admin/super-admin.module';
 
 @Module({
   imports: [
@@ -66,6 +70,10 @@ import { LogistiqueModule } from './modules/logistique/logistique.module';
     MachinesModule,
     MatieresPremiereModule,
     LogistiqueModule,
+    BomModule,
+    UsersModule,
+    GroupesModule,
+    SuperAdminModule,
     AuditModule,
     QueueModule,
   ],

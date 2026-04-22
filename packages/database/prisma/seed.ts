@@ -6,6 +6,20 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Démarrage du seed SaaS ERP...');
 
+  // ─── 0. Super Admin Innosoft ────────────────────────────────────────────────
+  console.log('Création du super-admin Innosoft...');
+  await (prisma as any).superAdmin.upsert({
+    where: { email: 'admin@innosoft.sn' },
+    update: {},
+    create: {
+      email: 'admin@innosoft.sn',
+      passwordHash: await bcrypt.hash('InnoSoft2024!', 12),
+      nom: 'Innosoft Creation',
+      actif: true,
+    },
+  });
+  console.log('✓ Super-admin créé : admin@innosoft.sn / InnoSoft2024!');
+
   // ─── 1. Modules plateforme ──────────────────────────────────────────────────
   console.log('Création des modules...');
   const modulesData = [
@@ -182,7 +196,130 @@ async function main() {
     });
   }
 
-  // ─── 8. Produits GISAC ──────────────────────────────────────────────────────
+  // ─── 8. Groupes & permissions GISAC ────────────────────────────────────────
+  console.log('Création des groupes...');
+
+  const tousModules = (lire: boolean, ecrire: boolean, supprimer: boolean) =>
+    Object.fromEntries(
+      ['crm','commandes','production','stock','facturation','recyclage','reporting',
+       'fournisseurs','machines','matieres-premieres','logistique','bom'].map((m) => [
+        m, { lire, ecrire, supprimer },
+      ])
+    );
+
+  const groupesData = [
+    {
+      code: 'admin',
+      nom: 'Administrateur',
+      description: 'Accès complet à tous les modules et paramètres',
+      permissions: tousModules(true, true, true),
+    },
+    {
+      code: 'direction',
+      nom: 'Direction',
+      description: 'Lecture totale, validation commandes et accès reporting',
+      permissions: {
+        crm:                  { lire: true,  ecrire: true,  supprimer: false },
+        commandes:            { lire: true,  ecrire: true,  supprimer: false },
+        production:           { lire: true,  ecrire: false, supprimer: false },
+        stock:                { lire: true,  ecrire: false, supprimer: false },
+        facturation:          { lire: true,  ecrire: false, supprimer: false },
+        recyclage:            { lire: true,  ecrire: false, supprimer: false },
+        reporting:            { lire: true,  ecrire: false, supprimer: false },
+        fournisseurs:         { lire: true,  ecrire: false, supprimer: false },
+        machines:             { lire: true,  ecrire: false, supprimer: false },
+        'matieres-premieres': { lire: true,  ecrire: false, supprimer: false },
+        logistique:           { lire: true,  ecrire: false, supprimer: false },
+        bom:                  { lire: true,  ecrire: false, supprimer: false },
+      },
+    },
+    {
+      code: 'commercial',
+      nom: 'Commercial',
+      description: 'CRM, Commandes, Logistique, Facturation (lecture)',
+      permissions: {
+        crm:                  { lire: true,  ecrire: true,  supprimer: false },
+        commandes:            { lire: true,  ecrire: true,  supprimer: false },
+        production:           { lire: true,  ecrire: false, supprimer: false },
+        stock:                { lire: true,  ecrire: false, supprimer: false },
+        facturation:          { lire: true,  ecrire: false, supprimer: false },
+        recyclage:            { lire: false, ecrire: false, supprimer: false },
+        reporting:            { lire: false, ecrire: false, supprimer: false },
+        fournisseurs:         { lire: false, ecrire: false, supprimer: false },
+        machines:             { lire: false, ecrire: false, supprimer: false },
+        'matieres-premieres': { lire: false, ecrire: false, supprimer: false },
+        logistique:           { lire: true,  ecrire: true,  supprimer: false },
+        bom:                  { lire: true,  ecrire: false, supprimer: false },
+      },
+    },
+    {
+      code: 'production',
+      nom: 'Production',
+      description: 'Production, Machines, Matières premières, BOM, Stock',
+      permissions: {
+        crm:                  { lire: true,  ecrire: false, supprimer: false },
+        commandes:            { lire: true,  ecrire: true,  supprimer: false },
+        production:           { lire: true,  ecrire: true,  supprimer: false },
+        stock:                { lire: true,  ecrire: true,  supprimer: false },
+        facturation:          { lire: false, ecrire: false, supprimer: false },
+        recyclage:            { lire: true,  ecrire: true,  supprimer: false },
+        reporting:            { lire: false, ecrire: false, supprimer: false },
+        fournisseurs:         { lire: true,  ecrire: false, supprimer: false },
+        machines:             { lire: true,  ecrire: true,  supprimer: false },
+        'matieres-premieres': { lire: true,  ecrire: true,  supprimer: false },
+        logistique:           { lire: true,  ecrire: false, supprimer: false },
+        bom:                  { lire: true,  ecrire: true,  supprimer: false },
+      },
+    },
+    {
+      code: 'magasinier',
+      nom: 'Magasinier',
+      description: 'Stock, Matières premières, Fournisseurs, Logistique',
+      permissions: {
+        crm:                  { lire: false, ecrire: false, supprimer: false },
+        commandes:            { lire: true,  ecrire: false, supprimer: false },
+        production:           { lire: true,  ecrire: false, supprimer: false },
+        stock:                { lire: true,  ecrire: true,  supprimer: false },
+        facturation:          { lire: false, ecrire: false, supprimer: false },
+        recyclage:            { lire: true,  ecrire: true,  supprimer: false },
+        reporting:            { lire: false, ecrire: false, supprimer: false },
+        fournisseurs:         { lire: true,  ecrire: true,  supprimer: false },
+        machines:             { lire: true,  ecrire: false, supprimer: false },
+        'matieres-premieres': { lire: true,  ecrire: true,  supprimer: true  },
+        logistique:           { lire: true,  ecrire: true,  supprimer: false },
+        bom:                  { lire: true,  ecrire: false, supprimer: false },
+      },
+    },
+    {
+      code: 'comptable',
+      nom: 'Comptable',
+      description: 'Facturation complète, reporting financier, commandes (lecture)',
+      permissions: {
+        crm:                  { lire: true,  ecrire: false, supprimer: false },
+        commandes:            { lire: true,  ecrire: false, supprimer: false },
+        production:           { lire: false, ecrire: false, supprimer: false },
+        stock:                { lire: false, ecrire: false, supprimer: false },
+        facturation:          { lire: true,  ecrire: true,  supprimer: false },
+        recyclage:            { lire: false, ecrire: false, supprimer: false },
+        reporting:            { lire: true,  ecrire: false, supprimer: false },
+        fournisseurs:         { lire: true,  ecrire: false, supprimer: false },
+        machines:             { lire: false, ecrire: false, supprimer: false },
+        'matieres-premieres': { lire: false, ecrire: false, supprimer: false },
+        logistique:           { lire: true,  ecrire: false, supprimer: false },
+        bom:                  { lire: false, ecrire: false, supprimer: false },
+      },
+    },
+  ];
+
+  for (const g of groupesData) {
+    await (prisma as any).groupe.upsert({
+      where: { tenantId_code: { tenantId: gisac.id, code: g.code } },
+      update: { nom: g.nom, description: g.description, permissions: g.permissions },
+      create: { tenantId: gisac.id, ...g },
+    });
+  }
+
+  // ─── 9. Produits GISAC ──────────────────────────────────────────────────────
   console.log('Création des produits...');
   const produitsData = [
     { reference: 'FILM-PE-100', nom: 'Film PE 100 microns', categorie: 'film_plastique', unite: 'rouleau', prixUnitaire: 45000 },

@@ -24,18 +24,18 @@ export declare class TenantsController {
         id: string;
         createdAt: Date;
         nom: string;
+        telephone: string | null;
+        actif: boolean;
+        updatedAt: Date;
         slug: string;
         secteur: string;
         plan: string;
-        actif: boolean;
         logo: string | null;
         couleurPrimaire: string | null;
         couleurSecondaire: string | null;
-        telephone: string | null;
         adresse: string | null;
         ville: string | null;
         pays: string;
-        updatedAt: Date;
     }>;
     getUtilisateurs(user: JwtPayload, page?: number, limite?: number): Promise<{
         items: {
@@ -44,8 +44,8 @@ export declare class TenantsController {
             nom: string;
             email: string;
             role: string;
-            actif: boolean;
             telephone: string | null;
+            actif: boolean;
             derniereConnexion: Date | null;
         }[];
         total: number;

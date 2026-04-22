@@ -9,6 +9,8 @@ export declare class CreateBonLivraisonDto {
     adresseLivraison?: string;
     transporteur?: string;
     dateExpedition?: string;
+    chauffeur?: string;
+    vehicule?: string;
     notes?: string;
     lignes?: LigneLivraisonDto[];
 }

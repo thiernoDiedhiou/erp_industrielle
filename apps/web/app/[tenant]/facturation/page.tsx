@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
-import { TrendingUp, Clock, CheckCircle, Download, CreditCard, X, FileText, Banknote } from 'lucide-react';
+import { TrendingUp, Clock, CheckCircle, Download, CreditCard, X, FileText, Banknote, Eye } from 'lucide-react';
+import { usePermissions } from '@/lib/permissions-context';
 
 const STATUTS_COULEURS: Record<string, string> = {
   emise: 'bg-blue-100 text-blue-700',
@@ -41,6 +43,9 @@ export default function FacturationPage() {
   const [dlLoading, setDlLoading] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { peutEcrire, peutLire } = usePermissions('facturation');
+  const params = useParams();
+  const router = useRouter();
 
   const { data: stats } = useQuery({
     queryKey: ['facturation-stats'],
@@ -73,7 +78,7 @@ export default function FacturationPage() {
     mutationFn: ({ id, form }: { id: string; form: typeof paiementForm }) =>
       api.post(`/facturation/factures/${id}/paiements`, {
         montant: Number(form.montant),
-        modePaiement: form.modePaiement,
+        mode: form.modePaiement,
         reference: form.reference || undefined,
       }),
     onSuccess: () => {
@@ -280,10 +285,14 @@ export default function FacturationPage() {
               {data?.items?.map((f: Facture) => (
                 <tr key={f.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/${params.tenant}/facturation/${f.id}`)}
+                      className="flex items-center gap-1.5 hover:underline"
+                    >
                       <FileText size={13} className="text-blue-500" />
                       <span className="font-medium text-sm text-blue-700">{f.reference}</span>
-                    </div>
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">{f.commande?.client?.nom || '-'}</td>
                   <td className="px-4 py-3 text-right font-medium text-sm text-gray-800">
@@ -299,7 +308,18 @@ export default function FacturationPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
-                      {f.statut !== 'payee' && f.statut !== 'annulee' && (
+                      {peutLire && (
+                        <button
+                          type="button"
+                          aria-label="Voir le détail"
+                          title="Détail"
+                          onClick={() => router.push(`/${params.tenant}/facturation/${f.id}`)}
+                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700"
+                        >
+                          <Eye size={15} />
+                        </button>
+                      )}
+                      {peutEcrire && f.statut !== 'payee' && f.statut !== 'annulee' && (
                         <button
                           type="button"
                           aria-label="Enregistrer un paiement"

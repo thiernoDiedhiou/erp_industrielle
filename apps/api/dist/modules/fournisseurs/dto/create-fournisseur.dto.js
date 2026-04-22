@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateFournisseurDto = void 0;
 const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
+const class_transformer_1 = require("class-transformer");
 class CreateFournisseurDto {
 }
 exports.CreateFournisseurDto = CreateFournisseurDto;
@@ -39,4 +40,33 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateFournisseurDto.prototype, "pays", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Ibrahima Sow' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateFournisseurDto.prototype, "contactPrincipal", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 14, description: 'Délai de livraison moyen en jours' }),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateFournisseurDto.prototype, "delaiLivraisonMoyen", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 4.5, description: 'Note d\'évaluation sur 5' }),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(5),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateFournisseurDto.prototype, "noteEvaluation", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '30 jours net' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateFournisseurDto.prototype, "conditionsPaiement", void 0);
 //# sourceMappingURL=create-fournisseur.dto.js.map
