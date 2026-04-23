@@ -54,10 +54,28 @@ export class CommandesService {
         client: true,
         lignes: { include: { produit: true } },
         historique: { orderBy: { createdAt: 'asc' } },
+        factures: { select: { id: true, reference: true, statut: true, totalTTC: true } },
       },
     });
     if (!commande) throw new NotFoundException('Commande introuvable');
-    return commande;
+
+    // Enrichir l'historique avec les noms d'utilisateurs
+    const userIds = [...new Set(commande.historique.map((h) => h.userId))];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds }, tenantId },
+      select: { id: true, prenom: true, nom: true },
+    });
+    const usersMap = Object.fromEntries(
+      users.map((u) => [u.id, `${u.prenom} ${u.nom}`]),
+    );
+
+    return {
+      ...commande,
+      historique: commande.historique.map((h) => ({
+        ...h,
+        userName: usersMap[h.userId] ?? 'Système',
+      })),
+    };
   }
 
   async creerCommande(tenantId: string, userId: string, dto: CreateCommandeDto) {

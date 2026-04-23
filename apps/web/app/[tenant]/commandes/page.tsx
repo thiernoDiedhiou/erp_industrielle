@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { useToast } from '@/components/ui/Toast';
 import { Plus, Eye } from 'lucide-react';
 import { usePermissions } from '@/lib/permissions-context';
 
@@ -43,8 +42,6 @@ export default function CommandesPage() {
   const params = useParams();
   const router = useRouter();
   const [filtreStatut, setFiltreStatut] = useState('');
-  const queryClient = useQueryClient();
-  const toast = useToast();
   const { peutEcrire } = usePermissions('commandes');
 
   const { data, isLoading } = useQuery({
@@ -57,15 +54,6 @@ export default function CommandesPage() {
     },
   });
 
-  const changerStatutMutation = useMutation({
-    mutationFn: ({ id, statut }: { id: string; statut: string }) =>
-      api.put(`/commandes/${id}/statut`, { statut }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['commandes'] });
-      toast.success('Statut de la commande mis à jour');
-    },
-    onError: () => toast.error('Erreur lors du changement de statut'),
-  });
 
   const formatMontant = (v: number) =>
     new Intl.NumberFormat('fr-SN', { maximumFractionDigits: 0 }).format(v) + ' FCFA';
@@ -126,7 +114,15 @@ export default function CommandesPage() {
             <tbody className="divide-y">
               {data?.items?.map((cmd: Commande) => (
                 <tr key={cmd.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-sm text-blue-700">{cmd.reference}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/${params.tenant}/commandes/${cmd.id}`)}
+                      className="font-medium text-sm text-blue-700 hover:underline hover:text-blue-900"
+                    >
+                      {cmd.reference}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-700">{cmd.client?.nom || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{cmd.lignes?.length || 0} ligne(s)</td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-800">

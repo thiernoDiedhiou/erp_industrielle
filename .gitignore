@@ -1,3 +1,45 @@
-node_modules
-CLAUDE.md
+# Dépendances
+node_modules/
+
+# Variables d'environnement (ne jamais committer)
 .env
+.env.*
+!.env.example
+
+# Build NestJS API
+apps/api/dist/
+
+# Build Next.js
+apps/web/.next/
+apps/web/out/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+
+# Couverture de tests
+coverage/
+.nyc_output/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker volumes locaux
+docker/data/
+
+# Prisma generated (si généré localement)
+# packages/database/prisma/generated/
+
+# Fichiers temporaires
+*.tmp
+*.temp

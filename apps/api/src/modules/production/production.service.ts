@@ -17,7 +17,7 @@ export class ProductionService {
 
     const where = { tenantId, ...(statut ? { statut } : {}) };
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total, compteurs] = await this.prisma.$transaction([
       this.prisma.ordreFabrication.findMany({
         where,
         skip,
@@ -31,9 +31,34 @@ export class ProductionService {
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.ordreFabrication.count({ where }),
+      this.prisma.ordreFabrication.groupBy({
+        by: ['statut'],
+        where: { tenantId },
+        _count: { statut: true },
+        orderBy: { statut: 'asc' },
+      }),
     ]);
 
-    return { items, total, page, totalPages: Math.ceil(total / limite) };
+    // Enrichissement manuel avec les données de commande (pas de @relation Prisma)
+    const commandeIds = items
+      .map((of) => of.commandeId)
+      .filter((id): id is string => !!id);
+
+    let commandesMap: Record<string, { id: string; reference: string; client?: { nom: string } | null }> = {};
+    if (commandeIds.length > 0) {
+      const commandes = await this.prisma.commande.findMany({
+        where: { id: { in: commandeIds }, tenantId },
+        select: { id: true, reference: true, client: { select: { nom: true } } },
+      });
+      commandesMap = Object.fromEntries(commandes.map((c) => [c.id, c]));
+    }
+
+    const itemsEnrichis = items.map((of) => ({
+      ...of,
+      commande: of.commandeId ? (commandesMap[of.commandeId] ?? null) : null,
+    }));
+
+    return { items: itemsEnrichis, total, page, totalPages: Math.ceil(total / limite), compteurs };
   }
 
   async getOF(tenantId: string, id: string) {
@@ -47,17 +72,27 @@ export class ProductionService {
       },
     });
     if (!of) throw new NotFoundException('Ordre de fabrication introuvable');
-    return of;
+
+    // Enrichissement manuel avec la commande liée
+    let commande: { id: string; reference: string; client?: { nom: string } | null } | null = null;
+    if (of.commandeId) {
+      commande = await this.prisma.commande.findFirst({
+        where: { id: of.commandeId, tenantId },
+        select: { id: true, reference: true, client: { select: { nom: true } } },
+      });
+    }
+
+    return { ...of, commande };
   }
 
-  async creerOF(tenantId: string, userId: string, data: {
+  async creerOF(tenantId: string, _userId: string, data: {
     commandeId?: string;
     machineId?: string;
     produitId: string;
     produitFini: string;
     quantitePrevue: number;
-    dateDebut?: string;
-    dateFin?: string;
+    dateDebutPrevue?: string;
+    dateFinPrevue?: string;
     notes?: string;
   }) {
     const reference = await this.genererReferenceOF(tenantId);
@@ -71,15 +106,15 @@ export class ProductionService {
         produitFini: data.produitFini,
         quantitePrevue: data.quantitePrevue,
         ...(data.commandeId ? { commandeId: data.commandeId } : {}),
-        ...(data.machineId ? { machineId: data.machineId } : {}),
-        ...(data.notes ? { notes: data.notes } : {}),
-        dateDebut: data.dateDebut ? new Date(data.dateDebut) : null,
-        dateFin: data.dateFin ? new Date(data.dateFin) : null,
+        ...(data.machineId  ? { machineId:  data.machineId  } : {}),
+        ...(data.notes      ? { notes:      data.notes      } : {}),
+        dateDebutPrevue: data.dateDebutPrevue ? new Date(data.dateDebutPrevue) : null,
+        dateFinPrevue:   data.dateFinPrevue   ? new Date(data.dateFinPrevue)   : null,
       },
     });
   }
 
-  async changerStatutOF(tenantId: string, id: string, statut: string) {
+  async changerStatutOF(tenantId: string, id: string, statut: string, quantiteProduite?: number) {
     const of = await this.prisma.ordreFabrication.findFirst({ where: { id, tenantId } });
     if (!of) throw new NotFoundException('OF introuvable');
 
@@ -95,15 +130,16 @@ export class ProductionService {
       );
     }
 
-    const data: Record<string, unknown> = { statut };
+    const updateData: Record<string, unknown> = { statut };
     if (statut === 'en_cours' && !of.dateDebut) {
-      data.dateDebut = new Date();
+      updateData.dateDebut = new Date();
     }
     if (statut === 'termine') {
-      data.dateFin = new Date();
+      updateData.dateFin = new Date();
+      if (quantiteProduite !== undefined) updateData.quantiteProduite = quantiteProduite;
     }
 
-    return this.prisma.ordreFabrication.update({ where: { id }, data });
+    return this.prisma.ordreFabrication.update({ where: { id }, data: updateData });
   }
 
   // ─── Consommation matières premières ───────────────────────────────────────
@@ -128,7 +164,6 @@ export class ProductionService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // Enregistrer la consommation
       const consommation = await tx.consommationMP.create({
         data: {
           ordreFabricationId: ofId,
@@ -138,13 +173,11 @@ export class ProductionService {
         },
       });
 
-      // Décrémenter le stock de la MP
       await tx.matierePremiere.update({
         where: { id: data.matierePremiereId },
         data: { stockActuel: { decrement: data.quantiteConsommee } },
       });
 
-      // Enregistrer le mouvement de stock
       await tx.mouvementStock.create({
         data: {
           tenantId,

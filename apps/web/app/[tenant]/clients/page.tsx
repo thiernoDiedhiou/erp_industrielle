@@ -2,12 +2,10 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
-import {
-  Plus, Search, Phone, Mail, MapPin, Pencil, Trash2, X,
-  FileText, ShoppingCart, Eye,
-} from 'lucide-react';
+import { Plus, Search, Phone, Mail, MapPin, Pencil, Trash2, X, Eye } from 'lucide-react';
 import { usePermissions } from '@/lib/permissions-context';
 
 const TYPES_CLIENT = ['industriel', 'agricole', 'alimentaire', 'distributeur', 'autre'] as const;
@@ -42,28 +40,6 @@ interface Client {
   delaiPaiement?: number;
 }
 
-interface Commande {
-  id: string;
-  reference: string;
-  statut: string;
-  totalHT: number;
-  totalTTC: number;
-  createdAt: string;
-  dateLivraisonPrevue?: string;
-  _count?: { lignes: number };
-}
-
-interface Facture {
-  id: string;
-  reference: string;
-  statut: string;
-  montantHT: number;
-  montantTTC: number;
-  montantPaye: number;
-  dateEcheance?: string;
-  createdAt: string;
-}
-
 const FORM_VIDE = {
   nom: '', type: '', email: '', telephone: '',
   adresse: '', ville: '', ninea: '', statut: 'actif',
@@ -71,18 +47,15 @@ const FORM_VIDE = {
   plafondCredit: '', delaiPaiement: '',
 };
 
-const fmt = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
-const fmtMontant = (n: number) => new Intl.NumberFormat('fr-FR').format(n) + ' F';
-
 export default function ClientsPage() {
+  const params = useParams();
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [filtreType, setFiltreType] = useState('');
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [selected, setSelected] = useState<Client | null>(null);
   const [formData, setFormData] = useState(FORM_VIDE);
   const [confirmDelete, setConfirmDelete] = useState<Client | null>(null);
-  const [detailClient, setDetailClient] = useState<Client | null>(null);
-  const [detailTab, setDetailTab] = useState<'commandes' | 'factures'>('commandes');
   const qc = useQueryClient();
   const toast = useToast();
   const { peutEcrire, peutSupprimer } = usePermissions('crm');
@@ -91,20 +64,6 @@ export default function ClientsPage() {
     queryKey: ['clients', search, filtreType],
     queryFn: async () =>
       (await api.get('/crm/clients', { params: { search, type: filtreType || undefined, limite: 50 } })).data,
-  });
-
-  const { data: commandesData } = useQuery({
-    queryKey: ['client-commandes', detailClient?.id],
-    queryFn: async () =>
-      (await api.get(`/crm/clients/${detailClient!.id}/commandes`, { params: { limite: 20 } })).data,
-    enabled: !!detailClient && detailTab === 'commandes',
-  });
-
-  const { data: facturesData } = useQuery({
-    queryKey: ['client-factures', detailClient?.id],
-    queryFn: async () =>
-      (await api.get(`/crm/clients/${detailClient!.id}/factures`, { params: { limite: 20 } })).data,
-    enabled: !!detailClient && detailTab === 'factures',
   });
 
   const creerMutation = useMutation({
@@ -153,8 +112,6 @@ export default function ClientsPage() {
   const fermerModal = () => { setModal(null); setSelected(null); setFormData(FORM_VIDE); };
   const soumettre = () => modal === 'create' ? creerMutation.mutate(formData) : modifierMutation.mutate(formData);
   const isPending = creerMutation.isPending || modifierMutation.isPending;
-
-  const ouvrirDetail = (c: Client) => { setDetailClient(c); setDetailTab('commandes'); };
 
   return (
     <div className="space-y-5">
@@ -211,7 +168,13 @@ export default function ClientsPage() {
                           {c.nom.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-medium text-sm text-gray-800">{c.nom}</p>
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/${params.tenant}/clients/${c.id}`)}
+                            className="font-medium text-sm text-gray-800 hover:text-blue-700 hover:underline text-left"
+                          >
+                            {c.nom}
+                          </button>
                           {c.ninea && <p className="text-xs text-gray-400">NINEA: {c.ninea}</p>}
                         </div>
                       </div>
@@ -252,7 +215,8 @@ export default function ClientsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">
-                        <button type="button" aria-label={`Voir ${c.nom}`} onClick={() => ouvrirDetail(c)}
+                        <button type="button" aria-label={`Voir ${c.nom}`}
+                          onClick={() => router.push(`/${params.tenant}/clients/${c.id}`)}
                           className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600">
                           <Eye size={14} />
                         </button>
@@ -294,14 +258,12 @@ export default function ClientsPage() {
               </button>
             </div>
             <div className="p-6 grid grid-cols-2 gap-4">
-              {/* Nom */}
               <div className="col-span-2">
                 <label htmlFor="field-nom" className="text-sm text-gray-600">Nom *</label>
                 <input id="field-nom" type="text" value={formData.nom}
                   onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              {/* Type */}
               <div>
                 <label htmlFor="field-type" className="text-sm text-gray-600">Type de client</label>
                 <select id="field-type" value={formData.type}
@@ -311,7 +273,6 @@ export default function ClientsPage() {
                   {TYPES_CLIENT.map((t) => <option key={t} value={t} className="capitalize">{t}</option>)}
                 </select>
               </div>
-              {/* Statut */}
               <div>
                 <label htmlFor="field-statut" className="text-sm text-gray-600">Statut</label>
                 <select id="field-statut" value={formData.statut}
@@ -322,21 +283,18 @@ export default function ClientsPage() {
                   <option value="inactif">Inactif</option>
                 </select>
               </div>
-              {/* Email */}
               <div>
                 <label htmlFor="field-email" className="text-sm text-gray-600">Email</label>
                 <input id="field-email" type="email" value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              {/* Téléphone */}
               <div>
                 <label htmlFor="field-telephone" className="text-sm text-gray-600">Téléphone</label>
                 <input id="field-telephone" type="tel" value={formData.telephone}
                   onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              {/* Contact principal */}
               <div>
                 <label htmlFor="field-contact" className="text-sm text-gray-600">Contact principal</label>
                 <input id="field-contact" type="text" value={formData.contact}
@@ -344,14 +302,12 @@ export default function ClientsPage() {
                   onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              {/* NINEA */}
               <div>
                 <label htmlFor="field-ninea" className="text-sm text-gray-600">NINEA</label>
                 <input id="field-ninea" type="text" value={formData.ninea}
                   onChange={(e) => setFormData({ ...formData, ninea: e.target.value })}
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              {/* Adresse */}
               <div className="col-span-2">
                 <label htmlFor="field-adresse" className="text-sm text-gray-600">Adresse</label>
                 <input id="field-adresse" type="text" value={formData.adresse}
@@ -359,7 +315,6 @@ export default function ClientsPage() {
                   onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              {/* Ville */}
               <div>
                 <label htmlFor="field-ville" className="text-sm text-gray-600">Ville</label>
                 <input id="field-ville" type="text" value={formData.ville}
@@ -367,14 +322,12 @@ export default function ClientsPage() {
                   onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              {/* Plafond crédit */}
               <div>
                 <label htmlFor="field-plafond" className="text-sm text-gray-600">Plafond crédit (FCFA)</label>
                 <input id="field-plafond" type="number" min="0" value={formData.plafondCredit}
                   onChange={(e) => setFormData({ ...formData, plafondCredit: e.target.value })}
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              {/* Délai paiement */}
               <div>
                 <label htmlFor="field-delai" className="text-sm text-gray-600">Délai paiement (jours)</label>
                 <input id="field-delai" type="number" min="0" max="365" value={formData.delaiPaiement}
@@ -397,151 +350,6 @@ export default function ClientsPage() {
         </div>
       )}
 
-      {/* Modal détail client (commandes + factures) */}
-      {detailClient && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold">
-                  {detailClient.nom.charAt(0)}
-                </div>
-                <div>
-                  <h2 className="font-semibold text-gray-800">{detailClient.nom}</h2>
-                  <div className="flex items-center gap-2">
-                    {detailClient.type && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${TYPE_STYLES[detailClient.type] ?? ''}`}>
-                        {detailClient.type}
-                      </span>
-                    )}
-                    {detailClient.ville && (
-                      <span className="text-xs text-gray-400 flex items-center gap-0.5">
-                        <MapPin size={10} /> {detailClient.ville}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <button type="button" aria-label="Fermer" onClick={() => setDetailClient(null)}>
-                <X size={18} className="text-gray-400 hover:text-gray-600" />
-              </button>
-            </div>
-
-            {/* Infos rapides */}
-            <div className="px-6 py-3 bg-gray-50 border-b grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              {detailClient.contact && (
-                <div><span className="text-gray-400">Contact :</span> <span className="font-medium text-gray-700">{detailClient.contact}</span></div>
-              )}
-              {detailClient.telephone && (
-                <div><span className="text-gray-400">Tél. :</span> <span className="font-medium text-gray-700">{detailClient.telephone}</span></div>
-              )}
-              {detailClient.plafondCredit != null && (
-                <div><span className="text-gray-400">Plafond :</span> <span className="font-medium text-gray-700">{fmtMontant(detailClient.plafondCredit)}</span></div>
-              )}
-              {detailClient.delaiPaiement != null && (
-                <div><span className="text-gray-400">Délai paiement :</span> <span className="font-medium text-gray-700">{detailClient.delaiPaiement}j</span></div>
-              )}
-            </div>
-
-            {/* Onglets */}
-            <div className="flex border-b px-6">
-              {(['commandes', 'factures'] as const).map((tab) => (
-                <button key={tab} type="button"
-                  onClick={() => setDetailTab(tab)}
-                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                    detailTab === tab
-                      ? 'border-blue-600 text-blue-700'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}>
-                  {tab === 'commandes' ? <ShoppingCart size={14} /> : <FileText size={14} />}
-                  {tab === 'commandes' ? 'Commandes' : 'Factures'}
-                </button>
-              ))}
-            </div>
-
-            {/* Contenu onglet */}
-            <div className="flex-1 overflow-y-auto">
-              {detailTab === 'commandes' && (
-                <div className="overflow-x-auto">
-                  {commandesData?.totalCA !== undefined && (
-                    <div className="px-6 py-2 bg-blue-50 text-xs text-blue-700 font-medium">
-                      CA total (commandes livrées/facturées) : {fmtMontant(commandesData.totalCA)}
-                    </div>
-                  )}
-                  <table className="w-full min-w-[560px]">
-                    <thead className="bg-gray-50 border-b">
-                      <tr>
-                        <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Référence</th>
-                        <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Statut</th>
-                        <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Total HT</th>
-                        <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Date</th>
-                        <th className="text-center px-4 py-2 text-xs font-medium text-gray-500">Lignes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {commandesData?.items?.map((cmd: Commande) => (
-                        <tr key={cmd.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-2.5 text-sm font-medium text-gray-800">{cmd.reference}</td>
-                          <td className="px-4 py-2.5">
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{cmd.statut}</span>
-                          </td>
-                          <td className="px-4 py-2.5 text-sm text-right text-gray-700">{fmtMontant(cmd.totalHT)}</td>
-                          <td className="px-4 py-2.5 text-xs text-gray-500">{fmt(cmd.createdAt)}</td>
-                          <td className="px-4 py-2.5 text-xs text-center text-gray-600">{cmd._count?.lignes ?? 0}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {!commandesData?.items?.length && (
-                    <p className="text-center py-6 text-gray-400 text-sm">Aucune commande</p>
-                  )}
-                </div>
-              )}
-              {detailTab === 'factures' && (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[560px]">
-                    <thead className="bg-gray-50 border-b">
-                      <tr>
-                        <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Référence</th>
-                        <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Statut</th>
-                        <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Montant TTC</th>
-                        <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Payé</th>
-                        <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Échéance</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {facturesData?.items?.map((fac: Facture) => {
-                        const encours = fac.montantTTC - fac.montantPaye;
-                        return (
-                          <tr key={fac.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-2.5 text-sm font-medium text-gray-800">{fac.reference}</td>
-                            <td className="px-4 py-2.5">
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{fac.statut}</span>
-                            </td>
-                            <td className="px-4 py-2.5 text-sm text-right text-gray-700">{fmtMontant(fac.montantTTC)}</td>
-                            <td className="px-4 py-2.5 text-sm text-right">
-                              <span className={encours > 0 ? 'text-red-600' : 'text-green-600'}>
-                                {fmtMontant(fac.montantPaye)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5 text-xs text-gray-500">
-                              {fac.dateEcheance ? fmt(fac.dateEcheance) : '—'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  {!facturesData?.items?.length && (
-                    <p className="text-center py-6 text-gray-400 text-sm">Aucune facture</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Confirmation suppression */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -550,7 +358,9 @@ export default function ClientsPage() {
               <Trash2 size={22} className="text-red-600" />
             </div>
             <h3 className="font-semibold text-gray-800 mb-1">Archiver ce client ?</h3>
-            <p className="text-sm text-gray-500 mb-5"><strong>{confirmDelete.nom}</strong> sera archivé (les données sont conservées).</p>
+            <p className="text-sm text-gray-500 mb-5">
+              <strong>{confirmDelete.nom}</strong> sera archivé (les données sont conservées).
+            </p>
             <div className="flex gap-3">
               <button type="button" onClick={() => supprimerMutation.mutate(confirmDelete.id)}
                 disabled={supprimerMutation.isPending}

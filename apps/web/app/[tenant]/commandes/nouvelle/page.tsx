@@ -75,22 +75,28 @@ export default function NouvelleCommandePage() {
 
   const soumettre = () => {
     if (!clientId) { toast.warning('Veuillez sélectionner un client'); return; }
-    const lignesValides = lignes.filter((l) => l.quantite && l.prixUnitaire);
+    const lignesValides = lignes.filter((l) => l.produitId && l.quantite && l.prixUnitaire);
     if (lignesValides.length === 0) {
-      toast.warning('Chaque ligne doit avoir une quantité et un prix unitaire'); return;
+      toast.warning('Chaque ligne doit avoir un produit, une quantité et un prix unitaire'); return;
     }
+    const lignesPayload = lignes
+      .filter((l) => l.produitId && l.quantite && l.prixUnitaire)
+      .map((l) => ({
+        produitId: l.produitId,
+        description: l.description || undefined,
+        quantite: Number(l.quantite),
+        prixUnitaire: Number(l.prixUnitaire),
+      }));
+
+    if (lignesPayload.length === 0) {
+      toast.warning('Chaque ligne doit avoir un produit, une quantité et un prix'); return;
+    }
+
     creerMutation.mutate({
       clientId,
-      dateLivraisonPrevue: datelivraison || undefined,
+      dateLivraison: datelivraison || undefined,
       notes: notes || undefined,
-      lignes: lignes
-        .filter((l) => l.quantite && l.prixUnitaire)
-        .map((l) => ({
-          produitId: l.produitId || undefined,
-          description: l.description || undefined,
-          quantite: Number(l.quantite),
-          prixUnitaire: Number(l.prixUnitaire),
-        })),
+      lignes: lignesPayload,
     });
   };
 
@@ -180,9 +186,9 @@ export default function NouvelleCommandePage() {
                     aria-label={`Produit ligne ${idx + 1}`}
                     value={l.produitId}
                     onChange={(e) => updateLigne(idx, 'produitId', e.target.value)}
-                    className="w-full border rounded px-2 py-1 text-sm"
+                    className={`w-full border rounded px-2 py-1 text-sm ${!l.produitId ? 'border-orange-300' : ''}`}
                   >
-                    <option value="">— Libre —</option>
+                    <option value="">— Sélectionner —</option>
                     {produits?.items?.map((p: { id: string; nom: string }) => (
                       <option key={p.id} value={p.id}>{p.nom}</option>
                     ))}

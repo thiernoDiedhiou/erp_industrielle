@@ -38,16 +38,31 @@ export class CrmService {
   async getClient(tenantId: string, id: string) {
     const client = await this.prisma.client.findFirst({
       where: { id, tenantId, deletedAt: null },
-      include: {
-        commandes: {
-          take: 5,
-          orderBy: { createdAt: 'desc' },
-          select: { id: true, reference: true, statut: true, totalHT: true, createdAt: true },
-        },
-      },
     });
     if (!client) throw new NotFoundException('Client introuvable');
-    return client;
+
+    // Calcul des KPIs en parallèle
+    const [commandesActives, caAggregate, facturesEncours] = await Promise.all([
+      this.prisma.commande.count({
+        where: { clientId: id, tenantId, statut: { notIn: ['livree', 'facturee', 'annulee'] } },
+      }),
+      this.prisma.commande.aggregate({
+        where: { clientId: id, tenantId, statut: { in: ['livree', 'facturee'] } },
+        _sum: { totalHT: true },
+      }),
+      this.prisma.facture.findMany({
+        where: { tenantId, commande: { clientId: id }, statut: { notIn: ['payee', 'annulee'] } },
+        select: { totalTTC: true, paiements: { select: { montant: true } } },
+      }),
+    ]);
+
+    const totalCA = Number(caAggregate._sum.totalHT ?? 0);
+    const encoursFactures = facturesEncours.reduce((sum, f) => {
+      const paye = f.paiements.reduce((s, p) => s + Number(p.montant), 0);
+      return sum + (Number(f.totalTTC) - paye);
+    }, 0);
+
+    return { ...client, totalCA, commandesActives, encoursFactures };
   }
 
   async creerClient(tenantId: string, dto: CreateClientDto) {

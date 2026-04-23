@@ -56,9 +56,9 @@ export class ProductionController {
   changerStatut(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() body: { statut: string },
+    @Body() body: { statut: string; quantiteProduite?: number },
   ) {
-    return this.productionService.changerStatutOF(user.tenantId, id, body.statut);
+    return this.productionService.changerStatutOF(user.tenantId, id, body.statut, body.quantiteProduite);
   }
 
   @Post('ofs/:id/consommations')
