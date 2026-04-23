@@ -161,8 +161,8 @@ export default function CommandeDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['commandes'] });
       toast.success('Statut mis à jour');
     },
-    onError: (err: { response?: { data?: { message?: string } } }) =>
-      toast.error(err.response?.data?.message || 'Transition non autorisée'),
+    onError: (err: any) =>
+      toast.error(String(err?.response?.data?.message ?? 'Transition non autorisée')),
   });
 
   const facturationMutation = useMutation({

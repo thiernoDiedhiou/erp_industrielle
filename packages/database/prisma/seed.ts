@@ -153,6 +153,7 @@ async function main() {
   const transitionsData = [
     { from: 'brouillon', to: 'confirmee', libelle: 'Confirmer', roles: ['commercial', 'direction', 'admin'] },
     { from: 'confirmee', to: 'en_production', libelle: 'Lancer production', roles: ['production', 'direction', 'admin'] },
+    { from: 'confirmee', to: 'livree', libelle: 'Livrer directement', roles: ['commercial', 'direction', 'admin'] },
     { from: 'en_production', to: 'prete', libelle: 'Marquer prête', roles: ['production', 'admin'] },
     { from: 'prete', to: 'livree', libelle: 'Livrer', roles: ['commercial', 'direction', 'admin'] },
     { from: 'livree', to: 'facturee', libelle: 'Facturer', roles: ['comptable', 'direction', 'admin'] },
