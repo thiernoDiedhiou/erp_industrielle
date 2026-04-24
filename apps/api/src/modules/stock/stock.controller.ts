@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StockService } from './stock.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -49,12 +49,54 @@ export class StockController {
 
   @Post('matieres/:id/inventaire')
   @Roles(UserRole.ADMIN, UserRole.MAGASINIER)
-  @ApiOperation({ summary: 'Ajustement inventaire' })
+  @ApiOperation({ summary: 'Ajustement inventaire matière première' })
   ajustement(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Body() body: { stockReel: number; motif: string },
   ) {
     return this.stockService.ajustementInventaire(user.tenantId, id, body.stockReel, body.motif);
+  }
+
+  @Get('produits-finis')
+  @ApiOperation({ summary: 'Stock produits finis avec alertes seuil minimum' })
+  getProduitsFinis(@CurrentUser() user: JwtPayload) {
+    return this.stockService.getProduitsFinis(user.tenantId);
+  }
+
+  @Post('produits-finis/:id/inventaire')
+  @Roles(UserRole.ADMIN, UserRole.MAGASINIER)
+  @ApiOperation({ summary: 'Ajustement inventaire produit fini' })
+  ajustementPF(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() body: { stockReel: number; motif: string },
+  ) {
+    return this.stockService.ajustementInventairePF(user.tenantId, id, body.stockReel, body.motif);
+  }
+
+  @Post('produits-finis')
+  @Roles(UserRole.ADMIN, UserRole.MAGASINIER)
+  @ApiOperation({ summary: 'Créer un produit fini' })
+  creerProduit(@CurrentUser() user: JwtPayload, @Body() body: any) {
+    return this.stockService.creerProduit(user.tenantId, body);
+  }
+
+  @Patch('produits-finis/:id')
+  @Roles(UserRole.ADMIN, UserRole.MAGASINIER)
+  @ApiOperation({ summary: 'Modifier un produit fini' })
+  modifierProduit(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
+    return this.stockService.modifierProduit(user.tenantId, id, body);
+  }
+
+  @Delete('produits-finis/:id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Supprimer (archiver) un produit fini' })
+  supprimerProduit(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.stockService.supprimerProduit(user.tenantId, id);
   }
 }

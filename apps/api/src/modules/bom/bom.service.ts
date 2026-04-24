@@ -79,7 +79,7 @@ export class BomService {
 
     const { items, ...bomData } = dto;
 
-    return this.prisma.$transaction(async (tx) => {
+    const bomCree = await this.prisma.$transaction(async (tx) => {
       const bom = await tx.bom.create({
         data: {
           tenantId,
@@ -105,8 +105,11 @@ export class BomService {
         });
       }
 
-      return this.getUn(tenantId, bom.id);
+      return bom;
     });
+
+    // Appelé après le commit pour que les données soient visibles
+    return this.getUn(tenantId, bomCree.id);
   }
 
   // ─── Modifier une nomenclature ───────────────────────────────────────────────
@@ -117,7 +120,7 @@ export class BomService {
 
     const { items, ...bomData } = dto;
 
-    return this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       await tx.bom.update({
         where: { id },
         data: {
@@ -145,9 +148,10 @@ export class BomService {
           });
         }
       }
-
-      return this.getUn(tenantId, id);
     });
+
+    // Appelé après le commit pour que les données soient visibles
+    return this.getUn(tenantId, id);
   }
 
   // ─── Activer / Désactiver ────────────────────────────────────────────────────
@@ -160,6 +164,54 @@ export class BomService {
       where: { id },
       data: { actif: !bom.actif },
     });
+  }
+
+  // ─── Matières premières disponibles pour composition BOM ────────────────────
+
+  async getMatieresPremieresDisponibles(tenantId: string) {
+    return this.prisma.matierePremiere.findMany({
+      where: { tenantId, deletedAt: null },
+      orderBy: { nom: 'asc' },
+      select: { id: true, nom: true, reference: true, unite: true, prixAchat: true },
+    });
+  }
+
+  // ─── BOMs actifs avec items (pour suggestions dans dialog OF) ───────────────
+
+  async getActifs(tenantId: string) {
+    return this.prisma.bom.findMany({
+      where: { tenantId, actif: true },
+      orderBy: { nom: 'asc' },
+      include: {
+        produitFini: { select: { id: true, nom: true, reference: true } },
+        items: {
+          include: {
+            matierePremiere: { select: { id: true, nom: true, unite: true, stockActuel: true } },
+          },
+        },
+      },
+    });
+  }
+
+  // ─── BOM actif pour un produit donné (dialog OF) ─────────────────────────────
+
+  async getPourProduit(tenantId: string, produitId: string) {
+    const bom = await this.prisma.bom.findFirst({
+      where: { tenantId, produitFiniId: produitId, actif: true },
+      orderBy: { version: 'desc' },
+      include: {
+        produitFini: { select: { id: true, nom: true, reference: true } },
+        items: {
+          include: {
+            matierePremiere: {
+              select: { id: true, nom: true, reference: true, unite: true, stockActuel: true },
+            },
+          },
+        },
+      },
+    });
+    if (!bom) throw new NotFoundException(`Aucune nomenclature active pour ce produit`);
+    return bom;
   }
 
   // ─── Supprimer ────────────────────────────────────────────────────────────────

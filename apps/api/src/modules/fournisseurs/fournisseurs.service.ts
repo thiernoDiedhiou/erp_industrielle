@@ -50,21 +50,30 @@ export class FournisseursService {
       },
     });
     if (!fournisseur) throw new NotFoundException('Fournisseur introuvable');
-    return fournisseur;
+    // Renommer 'contact' → 'contactPrincipal' pour correspondre au DTO frontend
+    const { contact, ...rest } = fournisseur as typeof fournisseur & { contact: string | null };
+    return { ...rest, contactPrincipal: contact };
   }
 
   async creer(tenantId: string, dto: CreateFournisseurDto) {
-    // Générer une référence automatique
     const reference = `FRN-${Date.now()}`;
+    const { contactPrincipal, ...rest } = dto;
     return this.prisma.fournisseur.create({
-      data: { ...dto, tenantId, reference },
+      data: { ...rest, tenantId, reference, ...(contactPrincipal ? { contact: contactPrincipal } : {}) },
     });
   }
 
   async modifier(tenantId: string, id: string, dto: Partial<CreateFournisseurDto>) {
     const fournisseur = await this.prisma.fournisseur.findFirst({ where: { id, tenantId, deletedAt: null } });
     if (!fournisseur) throw new NotFoundException('Fournisseur introuvable');
-    return this.prisma.fournisseur.update({ where: { id }, data: dto });
+    const { contactPrincipal, ...rest } = dto;
+    return this.prisma.fournisseur.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(contactPrincipal !== undefined ? { contact: contactPrincipal } : {}),
+      },
+    });
   }
 
   async supprimer(tenantId: string, id: string) {

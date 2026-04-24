@@ -41,7 +41,52 @@ export class RecyclageService {
     });
     if (!collecte) throw new NotFoundException('Collecte introuvable');
 
+    // ── Valorisation : entrée stock MP recyclée ───────────────────────────────
+    if (statut === 'valorise') {
+      const mpRecyclable = await this.prisma.matierePremiere.findFirst({
+        where: {
+          tenantId,
+          isRecycle: true,
+          nom: { contains: collecte.typeDechet, mode: 'insensitive' },
+        },
+      });
+
+      if (mpRecyclable) {
+        return this.prisma.$transaction(async (tx) => {
+          const updated = await tx.recyclageCollecte.update({
+            where: { id },
+            data: { statut },
+          });
+
+          await tx.matierePremiere.update({
+            where: { id: mpRecyclable.id },
+            data: { stockActuel: { increment: Number(collecte.quantite) } },
+          });
+
+          await tx.mouvementStock.create({
+            data: {
+              tenantId,
+              type: 'entree_recyclage',
+              reference: `REC-${id.slice(-8).toUpperCase()}`,
+              matierePremiereId: mpRecyclable.id,
+              quantite: collecte.quantite,
+              motif: `Valorisation recyclage — ${collecte.typeDechet}`,
+            },
+          });
+
+          return updated;
+        });
+      }
+    }
+
     return this.prisma.recyclageCollecte.update({ where: { id }, data: { statut } });
+  }
+
+  async supprimerCollecte(tenantId: string, id: string) {
+    const collecte = await this.prisma.recyclageCollecte.findFirst({ where: { id, tenantId } });
+    if (!collecte) throw new NotFoundException('Collecte introuvable');
+    await this.prisma.recyclageCollecte.delete({ where: { id } });
+    return { message: 'Collecte supprimée' };
   }
 
   async getStats(tenantId: string) {

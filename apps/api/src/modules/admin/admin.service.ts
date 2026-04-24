@@ -78,6 +78,43 @@ export class AdminService {
     return result;
   }
 
+  // ── Statistiques du tenant courant (scoped) ────────────────────────────────
+
+  async getStatsTenant(tenantId: string) {
+    const [nbUsers, nbCommandes, nbFactures, nbClients, nbOF, ca, modulesActifs, tenant] =
+      await Promise.all([
+        this.prisma.user.count({ where: { tenantId, actif: true } }),
+        this.prisma.commande.count({ where: { tenantId } }),
+        this.prisma.facture.count({ where: { tenantId } }),
+        this.prisma.client.count({ where: { tenantId } }),
+        this.prisma.ordreFabrication.count({ where: { tenantId } }),
+        this.prisma.facture.aggregate({
+          where: { tenantId, statut: 'payee' },
+          _sum: { totalTTC: true },
+        }),
+        this.prisma.tenantModule.findMany({
+          where: { tenantId, actif: true },
+          include: { module: { select: { code: true, nom: true } } },
+          orderBy: { module: { nom: 'asc' } },
+        }),
+        this.prisma.tenant.findFirst({
+          where: { id: tenantId },
+          select: { nom: true, plan: true, ville: true, secteur: true, pays: true, telephone: true },
+        }),
+      ]);
+
+    return {
+      nbUsers,
+      nbCommandes,
+      nbFactures,
+      nbClients,
+      nbOF,
+      totalCA: Number(ca._sum.totalTTC ?? 0),
+      modulesActifs: modulesActifs.map((tm) => ({ code: tm.module.code, nom: tm.module.nom })),
+      tenant,
+    };
+  }
+
   // ── Statistiques globales plateforme ───────────────────────────────────────
 
   async getStatsPlateforme() {

@@ -28,9 +28,9 @@ export class DashboardController {
   }
 
   @Get('reporting/ca-mensuel')
-  @ApiOperation({ summary: 'CA mensuel sur 12 mois glissants' })
-  getCaMensuel(@CurrentUser() user: JwtPayload) {
-    return this.dashboardService.getCaMensuel(user.tenantId);
+  @ApiOperation({ summary: 'CA mensuel (12 mois glissants ou année fixe)' })
+  getCaMensuel(@CurrentUser() user: JwtPayload, @Query('annee') annee?: string) {
+    return this.dashboardService.getCaMensuel(user.tenantId, annee ? +annee : undefined);
   }
 
   @Get('reporting/stock-critique')
@@ -49,5 +49,23 @@ export class DashboardController {
   @ApiOperation({ summary: 'Top 5 clients par CA' })
   getTopClients(@CurrentUser() user: JwtPayload) {
     return this.dashboardService.getTopClients(user.tenantId);
+  }
+
+  @Get('reporting/commandes-analytique')
+  @ApiOperation({ summary: 'Analytique commandes par mois + taux livraison' })
+  getCommandesAnalytique(@CurrentUser() user: JwtPayload, @Query('annee') annee?: string) {
+    return this.dashboardService.getCommandesAnalytique(user.tenantId, annee ? +annee : new Date().getFullYear());
+  }
+
+  @Get('reporting/production-analytique')
+  @ApiOperation({ summary: 'Analytique OFs — statuts, taux completion, par mois' })
+  getProductionAnalytique(@CurrentUser() user: JwtPayload, @Query('annee') annee?: string) {
+    return this.dashboardService.getProductionAnalytique(user.tenantId, annee ? +annee : new Date().getFullYear());
+  }
+
+  @Get('reporting/recyclage-analytique')
+  @ApiOperation({ summary: 'Analytique recyclage — tonnes/mois, par type, taux valorisation' })
+  getRecyclageAnalytique(@CurrentUser() user: JwtPayload, @Query('annee') annee?: string) {
+    return this.dashboardService.getRecyclageAnalytique(user.tenantId, annee ? +annee : new Date().getFullYear());
   }
 }

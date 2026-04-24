@@ -494,6 +494,64 @@ async function main() {
     }
   }
 
+  // ─── 13b. Nomenclatures BOM GISAC ───────────────────────────────────────────
+  console.log('Création des BOMs...');
+  const bomsData = [
+    {
+      nom: 'BOM Film PE 100µ v1',
+      produitFiniId: produitsMap['FILM-PE-100'],
+      version: '1.0',
+      items: [
+        { matiereRef: 'MP-PE-BD', quantite: 1.05, unite: 'kg', pertes: 5 },
+        { matiereRef: 'MP-COL-BL', quantite: 0.02, unite: 'kg', pertes: 2 },
+      ],
+    },
+    {
+      nom: 'BOM Emballage Alimentaire 500g v1',
+      produitFiniId: produitsMap['EMB-ALI-500'],
+      version: '1.0',
+      items: [
+        { matiereRef: 'MP-PE-HD', quantite: 0.55, unite: 'kg', pertes: 3 },
+        { matiereRef: 'MP-COL-NR', quantite: 0.01, unite: 'kg', pertes: 2 },
+      ],
+    },
+    {
+      nom: 'BOM Bâche Agricole Noir 50µ v1',
+      produitFiniId: produitsMap['BACHE-AGR-50'],
+      version: '1.0',
+      items: [
+        { matiereRef: 'MP-PP-001', quantite: 1.1, unite: 'kg', pertes: 4 },
+        { matiereRef: 'MP-COL-NR', quantite: 0.02, unite: 'kg', pertes: 2 },
+      ],
+    },
+  ];
+
+  // Récupérer les IDs des MP par référence
+  const bomMpRefs = [...new Set(bomsData.flatMap((b) => b.items.map((i) => i.matiereRef)))];
+  const bomMpRecords = await prisma.matierePremiere.findMany({
+    where: { tenantId: gisac.id, reference: { in: bomMpRefs } },
+    select: { id: true, reference: true },
+  });
+  const bomMpMap: Record<string, string> = {};
+  for (const mp of bomMpRecords) bomMpMap[mp.reference] = mp.id;
+
+  for (const bomData of bomsData) {
+    if (!bomData.produitFiniId) continue;
+    const existing = await prisma.bom.findFirst({
+      where: { tenantId: gisac.id, produitFiniId: bomData.produitFiniId, version: bomData.version },
+    });
+    if (!existing) {
+      const bom = await prisma.bom.create({
+        data: { tenantId: gisac.id, nom: bomData.nom, produitFiniId: bomData.produitFiniId, version: bomData.version, actif: true },
+      });
+      await prisma.bomItem.createMany({
+        data: bomData.items
+          .filter((i) => bomMpMap[i.matiereRef])
+          .map((i) => ({ bomId: bom.id, matierePremiereId: bomMpMap[i.matiereRef], quantite: i.quantite, unite: i.unite, pertes: i.pertes })),
+      });
+    }
+  }
+
   // ─── 14. Ordres de fabrication GISAC ────────────────────────────────────────
   console.log('Création des OFs...');
   const ofsData = [

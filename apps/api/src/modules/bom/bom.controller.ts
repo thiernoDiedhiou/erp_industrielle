@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query,
-  UseGuards, Req, ParseBoolPipe,
+  UseGuards, Req,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { BomService } from './bom.service';
@@ -33,6 +33,24 @@ export class BomController {
       search,
       actif: actif !== undefined ? actif === 'true' : undefined,
     });
+  }
+
+  @Get('actifs')
+  @ApiOperation({ summary: 'Toutes les nomenclatures actives avec items (suggestions OF)' })
+  getActifs(@Req() req: any) {
+    return this.bomService.getActifs(req.user.tenantId);
+  }
+
+  @Get('ressources/matieres-premieres')
+  @ApiOperation({ summary: 'Liste des MP disponibles pour composer une nomenclature' })
+  getMatieresPremieresDisponibles(@Req() req: any) {
+    return this.bomService.getMatieresPremieresDisponibles(req.user.tenantId);
+  }
+
+  @Get('pour-produit/:produitId')
+  @ApiOperation({ summary: 'BOM actif pour un produit donné (dialog OF)' })
+  getPourProduit(@Req() req: any, @Param('produitId') produitId: string) {
+    return this.bomService.getPourProduit(req.user.tenantId, produitId);
   }
 
   @Get(':id')

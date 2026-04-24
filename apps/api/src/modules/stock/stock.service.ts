@@ -1,9 +1,105 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class StockService {
   constructor(private prisma: PrismaService) {}
+
+  // Tableau de bord produits finis avec alertes
+  async getProduitsFinis(tenantId: string) {
+    const produits = await this.prisma.produit.findMany({
+      where: { tenantId, deletedAt: null },
+      select: {
+        id: true,
+        nom: true,
+        reference: true,
+        stockActuel: true,
+        stockMin: true,
+        unite: true,
+      },
+      orderBy: { nom: 'asc' },
+    });
+
+    const alertes = produits.filter(
+      (p) => Number(p.stockActuel) <= Number(p.stockMin ?? 0),
+    );
+
+    return { produits, alertes };
+  }
+
+  // Ajustement inventaire produit fini
+  async ajustementInventairePF(
+    tenantId: string,
+    produitId: string,
+    stockReel: number,
+    motif: string,
+  ) {
+    const produit = await this.prisma.produit.findFirst({
+      where: { id: produitId, tenantId },
+    });
+    if (!produit) throw new NotFoundException('Produit introuvable');
+
+    const difference = stockReel - Number(produit.stockActuel);
+    const type = difference >= 0 ? 'ajustement_positif' : 'ajustement_negatif';
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.produit.update({
+        where: { id: produitId },
+        data: { stockActuel: stockReel },
+      });
+
+      return tx.mouvementStock.create({
+        data: {
+          tenantId,
+          type,
+          reference: `INV-${Date.now()}`,
+          produitId,
+          quantite: Math.abs(difference),
+          motif,
+        },
+      });
+    });
+  }
+
+  // CRUD Produits finis ──────────────────────────────────────────────────────
+
+  async creerProduit(tenantId: string, dto: {
+    nom: string; reference?: string; unite?: string;
+    stockMin?: number; prixUnitaire?: number; categorie?: string; description?: string;
+  }) {
+    const reference = dto.reference?.trim() || `PROD-${Date.now()}`;
+    const existant = await this.prisma.produit.findFirst({ where: { tenantId, reference } });
+    if (existant) throw new BadRequestException(`Référence "${reference}" déjà utilisée`);
+    return this.prisma.produit.create({
+      data: {
+        tenantId,
+        nom: dto.nom,
+        reference,
+        unite: dto.unite ?? 'pce',
+        stockMin: dto.stockMin ?? 0,
+        prixUnitaire: dto.prixUnitaire ?? 0,
+        categorie: dto.categorie ?? 'standard',
+        description: dto.description,
+      },
+    });
+  }
+
+  async modifierProduit(tenantId: string, id: string, dto: {
+    nom?: string; unite?: string; stockMin?: number;
+    prixUnitaire?: number; categorie?: string; description?: string;
+  }) {
+    const produit = await this.prisma.produit.findFirst({ where: { id, tenantId, deletedAt: null } });
+    if (!produit) throw new NotFoundException('Produit introuvable');
+    return this.prisma.produit.update({ where: { id }, data: dto });
+  }
+
+  async supprimerProduit(tenantId: string, id: string) {
+    const produit = await this.prisma.produit.findFirst({ where: { id, tenantId, deletedAt: null } });
+    if (!produit) throw new NotFoundException('Produit introuvable');
+    const enCommande = await this.prisma.ligneCommande.count({ where: { produitId: id } });
+    if (enCommande > 0) throw new BadRequestException('Impossible : produit lié à des commandes');
+    return this.prisma.produit.update({ where: { id }, data: { deletedAt: new Date() } });
+  }
 
   // Tableau de bord stock avec alertes
   async getTableauBord(tenantId: string) {
@@ -52,6 +148,7 @@ export class StockService {
         take: limite,
         include: {
           matierePremiere: { select: { nom: true, unite: true } },
+          produit: { select: { nom: true, reference: true } },
         },
         orderBy: { createdAt: 'desc' },
       }),

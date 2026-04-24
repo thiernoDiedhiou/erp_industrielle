@@ -4,7 +4,8 @@ import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '@saas-erp/shared';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtPayload, UserRole } from '@saas-erp/shared';
 
 @ApiTags('Administration Plateforme')
 @ApiBearerAuth()
@@ -13,6 +14,12 @@ import { UserRole } from '@saas-erp/shared';
 @Controller('admin')
 export class AdminController {
   constructor(private adminService: AdminService) {}
+
+  @Get('stats-tenant')
+  @ApiOperation({ summary: 'Statistiques du tenant courant (scoped)' })
+  getStatsTenant(@CurrentUser() user: JwtPayload) {
+    return this.adminService.getStatsTenant(user.tenantId);
+  }
 
   @Get('stats')
   @ApiOperation({ summary: 'Statistiques globales de la plateforme' })

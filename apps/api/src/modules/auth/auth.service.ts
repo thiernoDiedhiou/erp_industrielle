@@ -2,12 +2,15 @@ import {
   Injectable,
   UnauthorizedException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { ModifierProfilDto } from './dto/modifier-profil.dto';
+import { ChangerMotDePasseDto } from './dto/changer-mot-de-passe.dto';
 import { JwtPayload } from '@saas-erp/shared';
 
 @Injectable()
@@ -159,6 +162,7 @@ export class AuthService {
       select: {
         id: true,
         nom: true,
+        prenom: true,
         email: true,
         role: true,
         telephone: true,
@@ -180,6 +184,44 @@ export class AuthService {
 
     if (!user) throw new NotFoundException('Utilisateur introuvable');
     return user;
+  }
+
+  async modifierProfil(userId: string, tenantId: string, dto: ModifierProfilDto) {
+    const user = await this.prisma.user.findFirst({ where: { id: userId, tenantId } });
+    if (!user) throw new NotFoundException('Utilisateur introuvable');
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        nom: dto.nom,
+        prenom: dto.prenom ?? null,
+        telephone: dto.telephone ?? null,
+      },
+      select: {
+        id: true, nom: true, prenom: true, email: true,
+        role: true, telephone: true, derniereConnexion: true, createdAt: true,
+      },
+    });
+  }
+
+  async changerMotDePasse(userId: string, tenantId: string, dto: ChangerMotDePasseDto) {
+    const user = await this.prisma.user.findFirst({ where: { id: userId, tenantId } });
+    if (!user) throw new NotFoundException('Utilisateur introuvable');
+
+    const valide = await bcrypt.compare(dto.motDePasseActuel, user.passwordHash);
+    if (!valide) throw new BadRequestException('Mot de passe actuel incorrect');
+
+    if (dto.motDePasseActuel === dto.nouveauMotDePasse) {
+      throw new BadRequestException('Le nouveau mot de passe doit être différent de l\'actuel');
+    }
+
+    const nouveauHash = await bcrypt.hash(dto.nouveauMotDePasse, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: nouveauHash, refreshTokenHash: null },
+    });
+
+    return { message: 'Mot de passe modifié avec succès' };
   }
 
   private genererAccessToken(payload: JwtPayload): Promise<string> {

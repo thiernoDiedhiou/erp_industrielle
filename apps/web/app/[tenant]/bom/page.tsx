@@ -31,7 +31,15 @@ interface Bom {
   _count?: { items: number };
 }
 
+interface ItemBrouillon {
+  matierePremiereId: string;
+  quantite: string;
+  unite: string;
+  pertes: string;
+}
+
 const FORM_VIDE = { nom: '', produitFiniId: '', version: '1.0', notes: '' };
+const ITEM_VIDE: ItemBrouillon = { matierePremiereId: '', quantite: '1', unite: 'kg', pertes: '0' };
 
 export default function BomPage() {
   const [search, setSearch] = useState('');
@@ -41,6 +49,7 @@ export default function BomPage() {
   const [coutQte, setCoutQte] = useState('100');
   const [coutResult, setCoutResult] = useState<any>(null);
   const [formData, setFormData] = useState(FORM_VIDE);
+  const [items, setItems] = useState<ItemBrouillon[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<Bom | null>(null);
   const qc = useQueryClient();
   const toast = useToast();
@@ -57,16 +66,59 @@ export default function BomPage() {
     enabled: !!expanded,
   });
 
+  const { data: produitsFinis } = useQuery<{ id: string; nom: string; reference: string }[]>({
+    queryKey: ['produits-pour-bom'],
+    queryFn: async () => {
+      const res = await api.get('/stock/produits-finis');
+      return res.data.produits ?? [];
+    },
+    enabled: modal === 'create',
+  });
+
+  const { data: matieresPremieresDisponibles } = useQuery<{ id: string; nom: string; reference: string; unite: string }[]>({
+    queryKey: ['mp-pour-bom'],
+    queryFn: async () => (await api.get('/bom/ressources/matieres-premieres')).data,
+    enabled: modal === 'create',
+  });
+
+  const fermerModal = () => {
+    setModal(null);
+    setFormData(FORM_VIDE);
+    setItems([]);
+  };
+
+  const ajouterItem = () => setItems((prev) => [...prev, { ...ITEM_VIDE }]);
+
+  const modifierItem = (i: number, champ: keyof ItemBrouillon, val: string) =>
+    setItems((prev) => prev.map((it, idx) => idx === i ? { ...it, [champ]: val } : it));
+
+  const supprimerItem = (i: number) =>
+    setItems((prev) => prev.filter((_, idx) => idx !== i));
+
   const creerMutation = useMutation({
-    mutationFn: (d: typeof formData) => api.post('/bom', d),
+    mutationFn: (payload: any) => api.post('/bom', payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['bom'] });
-      setModal(null);
-      setFormData(FORM_VIDE);
+      fermerModal();
       toast.success('Nomenclature créée');
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Erreur lors de la création'),
   });
+
+  const soumettreCreation = () => {
+    const payload = {
+      ...formData,
+      items: items
+        .filter((it) => it.matierePremiereId)
+        .map((it) => ({
+          matierePremiereId: it.matierePremiereId,
+          quantite: parseFloat(it.quantite) || 1,
+          unite: it.unite,
+          pertes: parseFloat(it.pertes) || 0,
+        })),
+    };
+    creerMutation.mutate(payload);
+  };
 
   const toggleMutation = useMutation({
     mutationFn: (id: string) => api.patch(`/bom/${id}/toggle-actif`),
@@ -246,52 +298,148 @@ export default function BomPage() {
       {/* Modal création */}
       {modal === 'create' && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            {/* En-tête */}
+            <div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0">
               <h2 className="font-semibold text-gray-800">Nouvelle nomenclature</h2>
-              <button type="button" aria-label="Fermer" onClick={() => setModal(null)}>
+              <button type="button" aria-label="Fermer" onClick={fermerModal}>
                 <X size={18} className="text-gray-400 hover:text-gray-600" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label htmlFor="bom-nom" className="text-sm text-gray-600">Nom *</label>
-                <input id="bom-nom" type="text" value={formData.nom}
-                  onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                  placeholder="ex: Nomenclature Sac PE 50kg"
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label htmlFor="bom-produit" className="text-sm text-gray-600">ID Produit fini *</label>
-                <input id="bom-produit" type="text" value={formData.produitFiniId}
-                  onChange={(e) => setFormData({ ...formData, produitFiniId: e.target.value })}
-                  placeholder="UUID de la matière première ou produit"
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <p className="text-xs text-gray-400 mt-1">Collez l&apos;ID depuis la page Matières Premières ou Produits</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+
+            {/* Corps scrollable */}
+            <div className="overflow-y-auto flex-1 p-6 space-y-5">
+
+              {/* — Informations générales — */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Informations générales</h3>
                 <div>
-                  <label htmlFor="bom-version" className="text-sm text-gray-600">Version</label>
-                  <input id="bom-version" type="text" value={formData.version}
-                    onChange={(e) => setFormData({ ...formData, version: e.target.value })}
+                  <label htmlFor="bom-nom" className="text-sm text-gray-600">Nom *</label>
+                  <input id="bom-nom" type="text" value={formData.nom}
+                    onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
+                    placeholder="ex: Nomenclature Film PE 100µ"
                     className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="bom-produit" className="text-sm text-gray-600">Produit fini *</label>
+                    <select id="bom-produit" value={formData.produitFiniId}
+                      onChange={(e) => setFormData({ ...formData, produitFiniId: e.target.value })}
+                      className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                      <option value="">— Sélectionner —</option>
+                      {(produitsFinis ?? []).map((p) => (
+                        <option key={p.id} value={p.id}>{p.nom} ({p.reference})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="bom-version" className="text-sm text-gray-600">Version</label>
+                    <input id="bom-version" type="text" value={formData.version}
+                      onChange={(e) => setFormData({ ...formData, version: e.target.value })}
+                      className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="bom-notes" className="text-sm text-gray-600">Notes</label>
+                  <textarea id="bom-notes" rows={2} value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                </div>
               </div>
-              <div>
-                <label htmlFor="bom-notes" className="text-sm text-gray-600">Notes</label>
-                <textarea id="bom-notes" rows={2} value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+
+              {/* — Composition — */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                    Composition — matières premières
+                  </h3>
+                  <button type="button" onClick={ajouterItem}
+                    className="flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 font-medium border border-blue-200 rounded-lg px-2.5 py-1 hover:bg-blue-50">
+                    <Plus size={13} /> Ajouter un composant
+                  </button>
+                </div>
+
+                {items.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-4 border border-dashed rounded-lg">
+                    Aucun composant ajouté. Cliquez sur « Ajouter un composant » pour définir la recette.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {/* En-têtes colonnes */}
+                    <div className="grid grid-cols-[1fr_80px_80px_70px_32px] gap-2 text-xs text-gray-400 font-medium px-1">
+                      <span>Matière première</span>
+                      <span className="text-right">Quantité</span>
+                      <span className="text-right">Unité</span>
+                      <span className="text-right">Pertes %</span>
+                      <span />
+                    </div>
+
+                    {items.map((item, i) => (
+                      <div key={i} className="grid grid-cols-[1fr_80px_80px_70px_32px] gap-2 items-center">
+                        {/* Sélecteur MP */}
+                        <select
+                          title={`Matière première du composant ${i + 1}`}
+                          aria-label={`Matière première du composant ${i + 1}`}
+                          value={item.matierePremiereId}
+                          onChange={(e) => modifierItem(i, 'matierePremiereId', e.target.value)}
+                          className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full">
+                          <option value="">— Choisir une MP —</option>
+                          {(matieresPremieresDisponibles ?? []).map((mp) => (
+                            <option key={mp.id} value={mp.id}>{mp.nom} ({mp.reference})</option>
+                          ))}
+                        </select>
+
+                        {/* Quantité */}
+                        <input
+                          type="number" min={0} step="0.001" value={item.quantite}
+                          title={`Quantité du composant ${i + 1}`}
+                          aria-label={`Quantité du composant ${i + 1}`}
+                          placeholder="1"
+                          onChange={(e) => modifierItem(i, 'quantite', e.target.value)}
+                          className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-right w-full" />
+
+                        {/* Unité */}
+                        <select
+                          title={`Unité du composant ${i + 1}`}
+                          aria-label={`Unité du composant ${i + 1}`}
+                          value={item.unite}
+                          onChange={(e) => modifierItem(i, 'unite', e.target.value)}
+                          className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full">
+                          {['kg', 'g', 'l', 'ml', 'pce', 'm', 'm²', 'tonne'].map((u) => (
+                            <option key={u} value={u}>{u}</option>
+                          ))}
+                        </select>
+
+                        {/* Pertes % */}
+                        <input
+                          type="number" min={0} max={100} step="0.1" value={item.pertes}
+                          title={`Pertes % du composant ${i + 1}`}
+                          aria-label={`Pertes % du composant ${i + 1}`}
+                          placeholder="0"
+                          onChange={(e) => modifierItem(i, 'pertes', e.target.value)}
+                          className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-right w-full" />
+
+                        {/* Supprimer */}
+                        <button type="button" onClick={() => supprimerItem(i)} aria-label={`Retirer le composant ${i + 1}`}
+                          className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-500">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex gap-2 px-6 pb-6">
+
+            {/* Pied */}
+            <div className="flex gap-2 px-6 py-4 border-t flex-shrink-0">
               <button type="button"
-                onClick={() => creerMutation.mutate(formData)}
+                onClick={soumettreCreation}
                 disabled={!formData.nom || !formData.produitFiniId || creerMutation.isPending}
                 className="flex-1 bg-blue-700 text-white py-2 rounded-lg text-sm hover:bg-blue-800 disabled:opacity-50">
                 {creerMutation.isPending ? 'Création...' : 'Créer la nomenclature'}
               </button>
-              <button type="button" onClick={() => setModal(null)}
+              <button type="button" onClick={fermerModal}
                 className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50">
                 Annuler
               </button>

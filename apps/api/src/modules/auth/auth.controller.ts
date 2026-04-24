@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   UseGuards,
   HttpCode,
@@ -17,6 +18,8 @@ import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ModifierProfilDto } from './dto/modifier-profil.dto';
+import { ChangerMotDePasseDto } from './dto/changer-mot-de-passe.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '@saas-erp/shared';
@@ -66,5 +69,24 @@ export class AuthController {
   @ApiOperation({ summary: "Profil de l'utilisateur connecté" })
   profil(@CurrentUser() user: JwtPayload) {
     return this.authService.profil(user.sub, user.tenantId);
+  }
+
+  @Patch('profil')
+  @SkipThrottle()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Modifier ses informations personnelles' })
+  modifierProfil(@CurrentUser() user: JwtPayload, @Body() dto: ModifierProfilDto) {
+    return this.authService.modifierProfil(user.sub, user.tenantId, dto);
+  }
+
+  @Patch('mot-de-passe')
+  @SkipThrottle()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Changer son mot de passe' })
+  changerMotDePasse(@CurrentUser() user: JwtPayload, @Body() dto: ChangerMotDePasseDto) {
+    return this.authService.changerMotDePasse(user.sub, user.tenantId, dto);
   }
 }

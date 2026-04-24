@@ -1,15 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/Toast';
-import { Plus, Search, X, MapPin, Truck, Package, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Plus, Search, X, MapPin, Truck, Package, CheckCircle, Clock, XCircle, Eye } from 'lucide-react';
 import { usePermissions } from '@/lib/permissions-context';
 
 interface Client { id: string; nom: string; ville?: string; adresse?: string; }
-interface Commande { id: string; reference: string; }
-interface LigneLivraison { produitId: string; quantite: number; description?: string; }
 
 interface BonLivraison {
   id: string;
@@ -53,6 +52,8 @@ export default function LogistiquePage() {
   const [formData, setFormData] = useState(FORM_VIDE);
   const qc = useQueryClient();
   const toast = useToast();
+  const params = useParams();
+  const router = useRouter();
   const { peutEcrire } = usePermissions('logistique');
 
   const { data: stats } = useQuery({
@@ -201,17 +202,20 @@ export default function LogistiquePage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {peutEcrire && transitions.length > 0 && (
-                          <div className="flex gap-1">
-                            {transitions.map((t) => (
-                              <button key={t} type="button"
-                                onClick={() => changerStatutMutation.mutate({ id: bl.id, statut: t })}
-                                className={`text-xs px-2 py-1 rounded border hover:opacity-80 ${STATUT_CONFIG[t]?.style}`}>
-                                → {STATUT_CONFIG[t]?.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1 justify-end">
+                          <button type="button" aria-label="Voir le détail"
+                            onClick={() => router.push(`/${params.tenant}/logistique/${bl.id}`)}
+                            className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                            <Eye size={15} />
+                          </button>
+                          {peutEcrire && transitions.length > 0 && transitions.map((t) => (
+                            <button key={t} type="button"
+                              onClick={() => changerStatutMutation.mutate({ id: bl.id, statut: t })}
+                              className={`text-xs px-2 py-1 rounded border hover:opacity-80 ${STATUT_CONFIG[t]?.style}`}>
+                              → {STATUT_CONFIG[t]?.label}
+                            </button>
+                          ))}
+                        </div>
                       </td>
                     </tr>
                   );

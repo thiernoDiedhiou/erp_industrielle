@@ -55,6 +55,18 @@ export class CommandesService {
         lignes: { include: { produit: true } },
         historique: { orderBy: { createdAt: 'asc' } },
         factures: { select: { id: true, reference: true, statut: true, totalTTC: true } },
+        ordresFabrication: {
+          select: {
+            id: true,
+            reference: true,
+            statut: true,
+            quantitePrevue: true,
+            quantiteProduite: true,
+            produitFini: true,
+            machine: { select: { nom: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
     if (!commande) throw new NotFoundException('Commande introuvable');
@@ -164,12 +176,13 @@ export class CommandesService {
     nouveauStatut: string,
     commentaire?: string,
   ) {
+    // Charger la commande avec ses lignes (nécessaire pour les effets stock)
     const commande = await this.prisma.commande.findFirst({
       where: { id, tenantId },
+      include: { lignes: true },
     });
     if (!commande) throw new NotFoundException('Commande introuvable');
 
-    // Vérifier la transition via le Config Engine
     const transitionAutorisee = await this.configEngine.verifierTransition(
       tenantId,
       'commande',
@@ -200,6 +213,51 @@ export class CommandesService {
           commentaire: commentaire || `Statut changé vers ${nouveauStatut}`,
         },
       });
+
+      // ── Livraison : sortie stock + bon de livraison automatique ─────────────
+      if (nouveauStatut === 'livree') {
+        for (const ligne of commande.lignes) {
+          await tx.produit.update({
+            where: { id: ligne.produitId },
+            data: { stockActuel: { decrement: Number(ligne.quantite) } },
+          });
+
+          await tx.mouvementStock.create({
+            data: {
+              tenantId,
+              type: 'sortie_livraison',
+              reference: commande.reference,
+              produitId: ligne.produitId,
+              quantite: ligne.quantite,
+              motif: `Livraison ${commande.reference}`,
+            },
+          });
+        }
+
+        // Créer le bon de livraison automatiquement
+        const blCount = await tx.bonLivraison.count({
+          where: { tenantId, reference: { startsWith: `BL-${new Date().getFullYear()}` } },
+        });
+        const blRef = `BL-${new Date().getFullYear()}-${String(blCount + 1).padStart(4, '0')}`;
+
+        const bl = await tx.bonLivraison.create({
+          data: {
+            tenantId,
+            reference: blRef,
+            commandeId: id,
+            clientId: commande.clientId,
+            statut: 'prepare',
+          },
+        });
+
+        await tx.ligneLivraison.createMany({
+          data: commande.lignes.map((l) => ({
+            bonLivraisonId: bl.id,
+            produitId: l.produitId,
+            quantite: l.quantite,
+          })),
+        });
+      }
 
       this.notifications.statutCommande(tenantId, commande.reference, commande.statut, nouveauStatut);
 

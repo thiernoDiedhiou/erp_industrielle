@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -7,7 +8,7 @@ import { useToast } from '@/components/ui/Toast';
 import { usePermissions } from '@/lib/permissions-context';
 import {
   ArrowLeft, FileText, Factory, CheckCircle, Clock, Circle,
-  User, Calendar, Package, Download, AlertTriangle,
+  User, Calendar, Package, Download, AlertTriangle, Eye,
 } from 'lucide-react';
 
 // ── Workflow ────────────────────────────────────────────────────────────────
@@ -21,6 +22,10 @@ const STATUTS_LABELS: Record<string, string> = {
   livree:        'Livrée',
   facturee:      'Facturée',
   annulee:       'Annulée',
+  planifie:      'Planifié',
+  en_cours:      'En cours',
+  en_pause:      'En pause',
+  termine:       'Terminé',
 };
 
 const STATUTS_COULEURS: Record<string, string> = {
@@ -31,8 +36,13 @@ const STATUTS_COULEURS: Record<string, string> = {
   livree:        'bg-green-100 text-green-700 border-green-200',
   facturee:      'bg-purple-100 text-purple-700 border-purple-200',
   annulee:       'bg-red-100 text-red-700 border-red-200',
+  planifie:      'bg-gray-100 text-gray-600 border-gray-200',
+  en_cours:      'bg-orange-100 text-orange-700 border-orange-200',
+  en_pause:      'bg-yellow-100 text-yellow-700 border-yellow-200',
+  termine:       'bg-green-100 text-green-700 border-green-200',
 };
 
+// Transitions visibles dans l'UI — la vraie autorisation est vérifiée côté API
 const TRANSITIONS: Record<string, { label: string; statut: string; color: string }[]> = {
   brouillon:     [{ label: 'Confirmer la commande',  statut: 'confirmee',     color: 'bg-blue-700 hover:bg-blue-800 text-white' }],
   confirmee:     [
@@ -56,7 +66,8 @@ const HISTORIQUE_ICONES: Record<string, React.ReactNode> = {
 // ── Types ───────────────────────────────────────────────────────────────────
 interface LigneCommande {
   id: string;
-  produit?: { nom: string; reference?: string };
+  produitId: string;
+  produit?: { id: string; nom: string; reference?: string };
   description?: string;
   quantite: number;
   prixUnitaire: number;
@@ -70,6 +81,16 @@ interface HistoriqueEntry {
   commentaire?: string;
   createdAt: string;
   userName: string;
+}
+
+interface OFResume {
+  id: string;
+  reference: string;
+  statut: string;
+  quantitePrevue: number;
+  quantiteProduite: number;
+  produitFini: string;
+  machine?: { nom: string } | null;
 }
 
 interface Commande {
@@ -86,10 +107,31 @@ interface Commande {
   lignes: LigneCommande[];
   historique: HistoriqueEntry[];
   factures?: { id: string; reference: string; statut: string; totalTTC: number }[];
-  ordresFabrication?: { id: string; reference: string; statut: string }[];
+  ordresFabrication?: OFResume[];
 }
 
-// ── Composant stepper ────────────────────────────────────────────────────────
+interface Machine {
+  id: string;
+  nom: string;
+  code: string;
+  statut: string;
+}
+
+interface BomActif {
+  id: string;
+  nom: string;
+  version: string;
+  produitFini?: { nom: string };
+  items: {
+    id: string;
+    quantite: number;
+    unite?: string;
+    pertes?: number;
+    matierePremiere?: { id: string; nom: string; unite?: string; stockActuel: number };
+  }[];
+}
+
+// ── Stepper workflow ────────────────────────────────────────────────────────
 function WorkflowStepper({ statut }: { statut: string }) {
   if (statut === 'annulee') {
     return (
@@ -98,15 +140,13 @@ function WorkflowStepper({ statut }: { statut: string }) {
       </div>
     );
   }
-
   const indexActuel = STATUTS_ORDRE.indexOf(statut);
-
   return (
     <div className="bg-white border rounded-xl px-5 py-4">
       <div className="flex items-center">
         {STATUTS_ORDRE.map((s, i) => {
-          const passe   = i < indexActuel;
-          const actuel  = i === indexActuel;
+          const passe  = i < indexActuel;
+          const actuel = i === indexActuel;
           return (
             <div key={s} className="flex items-center flex-1 last:flex-none">
               <div className="flex flex-col items-center">
@@ -146,12 +186,32 @@ export default function CommandeDetailPage() {
   const tenant      = params.tenant as string;
   const { peutEcrire } = usePermissions('commandes');
 
+  // Dialog "Lancer en production"
+  const [showLancerModal, setShowLancerModal] = useState(false);
+  const [ofForm, setOfForm] = useState({
+    machineId: '',
+    bomId: '',
+    ligneIndex: 0,
+    dateDebutPrevue: '',
+    dateFinPrevue: '',
+    notes: '',
+  });
+
   const { data: commande, isLoading } = useQuery<Commande>({
     queryKey: ['commande', id],
-    queryFn: async () => {
-      const { data } = await api.get(`/commandes/${id}`);
-      return data;
-    },
+    queryFn: async () => (await api.get(`/commandes/${id}`)).data,
+  });
+
+  const { data: machines } = useQuery<Machine[]>({
+    queryKey: ['machines'],
+    queryFn: async () => (await api.get('/production/machines')).data,
+    enabled: showLancerModal,
+  });
+
+  const { data: bomsActifs } = useQuery<BomActif[]>({
+    queryKey: ['boms-actifs'],
+    queryFn: async () => (await api.get('/bom/actifs')).data,
+    enabled: showLancerModal,
   });
 
   const changerStatutMutation = useMutation({
@@ -165,11 +225,22 @@ export default function CommandeDetailPage() {
       toast.error(String(err?.response?.data?.message ?? 'Transition non autorisée')),
   });
 
+  const creerOFMutation = useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.post('/production/ofs', body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commande', id] });
+      queryClient.invalidateQueries({ queryKey: ['ofs'] });
+      toast.success('Ordre de fabrication créé et lié à la commande');
+      setShowLancerModal(false);
+    },
+    onError: (err: any) =>
+      toast.error(String(err?.response?.data?.message ?? 'Erreur création OF')),
+  });
+
   const facturationMutation = useMutation({
     mutationFn: () => api.post(`/facturation/factures/depuis-commande/${id}`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['commande', id] });
-      queryClient.invalidateQueries({ queryKey: ['facturation-stats'] });
       toast.success('Facture créée — voir dans Facturation');
     },
     onError: () => toast.error('Erreur lors de la création de la facture'),
@@ -186,6 +257,31 @@ export default function CommandeDetailPage() {
       a.href = url; a.download = `${facture.reference}.pdf`; a.click();
       window.URL.revokeObjectURL(url);
     } catch { toast.error('Erreur téléchargement PDF'); }
+  };
+
+  // Ouvre le modal et change le statut immédiatement
+  const handleLancerProduction = () => {
+    if (!commande?.lignes?.length) return;
+    setOfForm({ machineId: '', bomId: '', ligneIndex: 0, dateDebutPrevue: '', dateFinPrevue: '', notes: '' });
+    setShowLancerModal(true);
+    // Changer le statut en parallèle
+    changerStatutMutation.mutate('en_production');
+  };
+
+  const confirmerCreationOF = () => {
+    if (!commande) return;
+    const ligne = commande.lignes[ofForm.ligneIndex];
+    if (!ligne) return;
+    creerOFMutation.mutate({
+      commandeId: commande.id,
+      produitId: ligne.produitId,
+      produitFini: ligne.produit?.nom ?? 'Produit',
+      quantitePrevue: Number(ligne.quantite),
+      machineId: ofForm.machineId || undefined,
+      dateDebutPrevue: ofForm.dateDebutPrevue || undefined,
+      dateFinPrevue: ofForm.dateFinPrevue || undefined,
+      notes: ofForm.notes || undefined,
+    });
   };
 
   const fmt = (v: number) =>
@@ -209,9 +305,13 @@ export default function CommandeDetailPage() {
   }
   if (!commande) return null;
 
-  const transitions = TRANSITIONS[commande.statut] ?? [];
+  const transitions = (TRANSITIONS[commande.statut] ?? []).filter(
+    (t) => t.statut !== 'en_production', // géré séparément via handleLancerProduction
+  );
+  const lancerEnProduction = commande.statut === 'confirmee' && peutEcrire;
   const peutFacturer = peutEcrire && commande.statut === 'livree' && !commande.factures?.length;
   const aFacture     = (commande.factures?.length ?? 0) > 0;
+  const aOFs         = (commande.ordresFabrication?.length ?? 0) > 0;
   const totalHT      = Number(commande.totalHT ?? 0);
   const tva          = Number(commande.tva ?? 0);
   const totalTTC     = Number(commande.totalTTC ?? 0);
@@ -243,6 +343,18 @@ export default function CommandeDetailPage() {
 
         {/* Actions */}
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          {/* Bouton spécial "Lancer en production" avec dialog OF */}
+          {lancerEnProduction && (
+            <button
+              type="button"
+              onClick={handleLancerProduction}
+              disabled={changerStatutMutation.isPending}
+              className="px-4 py-2 text-sm rounded-lg font-medium disabled:opacity-50 bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              {changerStatutMutation.isPending ? '...' : 'Lancer en production'}
+            </button>
+          )}
+          {/* Autres transitions */}
           {peutEcrire && transitions.map((t) => (
             <button
               key={t.statut}
@@ -310,8 +422,7 @@ export default function CommandeDetailPage() {
                     <p className="text-xs text-gray-400">Livraison prévue</p>
                     <p className={`font-medium ${
                       commande.dateLivraison && new Date(commande.dateLivraison) < new Date() && commande.statut !== 'livree' && commande.statut !== 'facturee'
-                        ? 'text-red-600'
-                        : 'text-gray-800'
+                        ? 'text-red-600' : 'text-gray-800'
                     }`}>
                       {commande.dateLivraison ? fmtDate(commande.dateLivraison) : '—'}
                     </p>
@@ -349,13 +460,9 @@ export default function CommandeDetailPage() {
                     <tr key={l.id} className="hover:bg-gray-50">
                       <td className="px-5 py-3">
                         <p className="text-sm font-medium text-gray-800">{l.produit?.nom || '—'}</p>
-                        {l.produit?.reference && (
-                          <p className="text-xs text-gray-400">{l.produit.reference}</p>
-                        )}
+                        {l.produit?.reference && <p className="text-xs text-gray-400">{l.produit.reference}</p>}
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-400 hidden sm:table-cell">
-                        {l.description || '—'}
-                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-400 hidden sm:table-cell">{l.description || '—'}</td>
                       <td className="px-4 py-3 text-sm text-right text-gray-700">{Number(l.quantite)}</td>
                       <td className="px-4 py-3 text-sm text-right text-gray-700">
                         {new Intl.NumberFormat('fr-SN', { maximumFractionDigits: 0 }).format(Number(l.prixUnitaire))}
@@ -414,25 +521,55 @@ export default function CommandeDetailPage() {
             </div>
           </div>
 
-          {/* Ordres de fabrication */}
-          {(commande.ordresFabrication?.length ?? 0) > 0 && (
+          {/* ── Ordres de fabrication ── */}
+          {(commande.statut === 'en_production' || commande.statut === 'prete' || aOFs) && (
             <div className="bg-white rounded-xl border shadow-sm p-5">
               <h2 className="font-semibold text-gray-700 mb-3 flex items-center gap-2 text-sm">
                 <Factory size={14} className="text-orange-500" /> Ordres de fabrication
+                <span className="ml-auto text-xs text-gray-400 font-normal">{commande.ordresFabrication?.length ?? 0}</span>
               </h2>
-              <div className="space-y-2">
-                {commande.ordresFabrication!.map((of) => (
-                  <button
-                    key={of.id}
-                    type="button"
-                    onClick={() => router.push(`/${tenant}/production`)}
-                    className="w-full flex justify-between items-center text-sm p-2 rounded-lg hover:bg-gray-50"
-                  >
-                    <span className="text-orange-700 font-medium">{of.reference}</span>
-                    <span className="text-xs text-gray-400">{STATUTS_LABELS[of.statut] ?? of.statut}</span>
-                  </button>
-                ))}
-              </div>
+              {aOFs ? (
+                <div className="space-y-2">
+                  {commande.ordresFabrication!.map((of) => {
+                    const taux = Number(of.quantitePrevue) > 0
+                      ? Math.round((Number(of.quantiteProduite) / Number(of.quantitePrevue)) * 100)
+                      : 0;
+                    return (
+                      <div key={of.id} className="border rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/${tenant}/production/${of.id}`)}
+                            className="text-sm font-medium text-orange-700 hover:underline flex items-center gap-1"
+                          >
+                            <Eye size={12} /> {of.reference}
+                          </button>
+                          <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUTS_COULEURS[of.statut] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                            {STATUTS_LABELS[of.statut] ?? of.statut}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">{of.produitFini}{of.machine ? ` — ${of.machine.nom}` : ''}</p>
+                        {/* Barre de progression */}
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${of.statut === 'termine' ? 'bg-green-500' : 'bg-orange-400'}`}
+                              style={{ width: `${Math.min(taux, 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-400 whitespace-nowrap">
+                            {Number(of.quantiteProduite)}/{Number(of.quantitePrevue)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 text-center py-3">
+                  Aucun OF créé — utilisez le bouton ci-dessus pour en créer un.
+                </p>
+              )}
             </div>
           )}
 
@@ -454,7 +591,7 @@ export default function CommandeDetailPage() {
                       <p className="text-purple-700 font-medium">{f.reference}</p>
                       <p className="text-xs text-gray-400">{fmt(Number(f.totalTTC))}</p>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUTS_COULEURS[f.statut] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUTS_COULEURS[f.statut] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                       {STATUTS_LABELS[f.statut] ?? f.statut}
                     </span>
                   </button>
@@ -478,8 +615,7 @@ export default function CommandeDetailPage() {
                 <span className={`${
                   commande.dateLivraison && new Date(commande.dateLivraison) < new Date()
                   && commande.statut !== 'livree' && commande.statut !== 'facturee'
-                    ? 'text-red-600 font-semibold'
-                    : 'text-gray-700'
+                    ? 'text-red-600 font-semibold' : 'text-gray-700'
                 }`}>
                   {commande.dateLivraison ? fmtDate(commande.dateLivraison) : '—'}
                 </span>
@@ -532,6 +668,174 @@ export default function CommandeDetailPage() {
           )}
         </div>
       </div>
+
+      {/* ── Modal : Créer l'OF lié ── */}
+      {showLancerModal && commande && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                <Factory size={20} className="text-orange-600" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-gray-800">Créer l'ordre de fabrication</h2>
+                <p className="text-xs text-gray-400">Lié à {commande.reference}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Sélection de la ligne produit si plusieurs */}
+              {commande.lignes.length > 1 && (
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Ligne de commande</label>
+                  <select
+                    value={ofForm.ligneIndex}
+                    onChange={(e) => setOfForm((f) => ({ ...f, ligneIndex: Number(e.target.value) }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    {commande.lignes.map((l, i) => (
+                      <option key={l.id} value={i}>
+                        {l.produit?.nom ?? l.produitId} — Qté : {Number(l.quantite)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Récapitulatif produit sélectionné */}
+              {commande.lignes[ofForm.ligneIndex] && (
+                <div className="bg-orange-50 border border-orange-100 rounded-lg px-4 py-3 text-sm">
+                  <p className="font-medium text-orange-800">{commande.lignes[ofForm.ligneIndex].produit?.nom}</p>
+                  <p className="text-orange-600 text-xs mt-0.5">
+                    Qté prévue : {Number(commande.lignes[ofForm.ligneIndex].quantite)} unités
+                  </p>
+                </div>
+              )}
+
+              {/* Nomenclature (BOM) */}
+              {bomsActifs && bomsActifs.length > 0 && (
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">
+                    Nomenclature (BOM)
+                    <span className="font-normal text-gray-400 ml-1">— matières suggérées</span>
+                  </label>
+                  <select
+                    value={ofForm.bomId}
+                    onChange={(e) => setOfForm((f) => ({ ...f, bomId: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">— Sans nomenclature —</option>
+                    {bomsActifs.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.nom} v{b.version}{b.produitFini ? ` — ${b.produitFini.nom}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Aperçu des matières de la BOM sélectionnée */}
+                  {ofForm.bomId && (() => {
+                    const bom = bomsActifs.find((b) => b.id === ofForm.bomId);
+                    if (!bom?.items.length) return null;
+                    const qty = Number(commande?.lignes[ofForm.ligneIndex]?.quantite ?? 1);
+                    return (
+                      <div className="mt-2 bg-amber-50 border border-amber-100 rounded-lg p-3">
+                        <p className="text-xs font-medium text-amber-800 mb-2">Matières nécessaires pour {qty} unité(s) :</p>
+                        <div className="space-y-1">
+                          {bom.items.filter((i) => i.matierePremiere).map((item) => {
+                            const qteNecessaire = Number(item.quantite) * qty * (1 + Number(item.pertes ?? 0) / 100);
+                            const mp = item.matierePremiere!;
+                            const insuffisant = Number(mp.stockActuel) < qteNecessaire;
+                            return (
+                              <div key={item.id} className="flex justify-between items-center text-xs">
+                                <span className="text-amber-700">{mp.nom}</span>
+                                <span className={`font-medium ${insuffisant ? 'text-red-600' : 'text-green-700'}`}>
+                                  {qteNecessaire.toFixed(1)} {item.unite ?? mp.unite}
+                                  {insuffisant && ' ⚠ stock insuffisant'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Machine */}
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Machine</label>
+                <select
+                  value={ofForm.machineId}
+                  onChange={(e) => setOfForm((f) => ({ ...f, machineId: e.target.value }))}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="">— Sans machine —</option>
+                  {machines?.map((m) => (
+                    <option key={m.id} value={m.id} disabled={m.statut === 'maintenance'}>
+                      {m.nom} ({m.code}){m.statut === 'maintenance' ? ' — maintenance' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Début prévu</label>
+                  <input
+                    type="date"
+                    value={ofForm.dateDebutPrevue}
+                    onChange={(e) => setOfForm((f) => ({ ...f, dateDebutPrevue: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Fin prévue</label>
+                  <input
+                    type="date"
+                    value={ofForm.dateFinPrevue}
+                    onChange={(e) => setOfForm((f) => ({ ...f, dateFinPrevue: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Notes (optionnel)</label>
+                <textarea
+                  rows={2}
+                  value={ofForm.notes}
+                  onChange={(e) => setOfForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Instructions de production..."
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button
+                type="button"
+                onClick={confirmerCreationOF}
+                disabled={creerOFMutation.isPending}
+                className="flex-1 bg-orange-600 text-white py-2 rounded-lg text-sm hover:bg-orange-700 disabled:opacity-50 font-medium"
+              >
+                {creerOFMutation.isPending ? 'Création...' : 'Créer l\'OF'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLancerModal(false)}
+                className="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50 text-gray-600"
+              >
+                Ignorer
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-3 text-center">
+              La commande est déjà passée en production. Vous pouvez aussi créer l'OF plus tard depuis le module Production.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

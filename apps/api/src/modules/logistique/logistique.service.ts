@@ -123,8 +123,15 @@ export class LogistiqueService {
       throw new BadRequestException('Impossible de modifier un BL livré ou annulé');
     }
 
-    const { lignes, ...data } = dto;
-    return this.prisma.bonLivraison.update({ where: { id }, data });
+    const { lignes, dateExpedition, clientId, commandeId, ...rest } = dto;
+
+    return this.prisma.bonLivraison.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(dateExpedition ? { dateExpedition: new Date(dateExpedition) } : {}),
+      },
+    });
   }
 
   async getStats(tenantId: string) {

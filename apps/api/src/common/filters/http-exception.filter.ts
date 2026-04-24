@@ -22,10 +22,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : 'Erreur interne du serveur';
+    let message: string;
+    if (exception instanceof HttpException) {
+      const raw = exception.getResponse();
+      if (typeof raw === 'string') {
+        message = raw;
+      } else if (typeof (raw as any)?.message === 'string') {
+        message = (raw as any).message;
+      } else if (Array.isArray((raw as any)?.message)) {
+        message = (raw as any).message[0];
+      } else {
+        message = 'Erreur inconnue';
+      }
+    } else {
+      message = 'Erreur interne du serveur';
+    }
 
     // Log les erreurs 500 pour investigation
     if (status >= 500) {

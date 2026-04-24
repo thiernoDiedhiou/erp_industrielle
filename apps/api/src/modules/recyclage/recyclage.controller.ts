@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RecyclageService } from './recyclage.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -46,5 +46,11 @@ export class RecyclageController {
     @Body() body: { statut: string },
   ) {
     return this.recyclageService.changerStatut(user.tenantId, id, body.statut);
+  }
+
+  @Delete('collectes/:id')
+  @ApiOperation({ summary: 'Supprimer une collecte' })
+  supprimer(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.recyclageService.supprimerCollecte(user.tenantId, id);
   }
 }

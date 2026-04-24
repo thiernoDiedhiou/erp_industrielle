@@ -24,6 +24,7 @@ export class ProductionService {
         take: limite,
         include: {
           machine: { select: { nom: true, code: true } },
+          commande: { select: { id: true, reference: true, client: { select: { nom: true } } } },
           consommations: {
             include: { matierePremiere: { select: { nom: true, unite: true } } },
           },
@@ -39,26 +40,7 @@ export class ProductionService {
       }),
     ]);
 
-    // Enrichissement manuel avec les données de commande (pas de @relation Prisma)
-    const commandeIds = items
-      .map((of) => of.commandeId)
-      .filter((id): id is string => !!id);
-
-    let commandesMap: Record<string, { id: string; reference: string; client?: { nom: string } | null }> = {};
-    if (commandeIds.length > 0) {
-      const commandes = await this.prisma.commande.findMany({
-        where: { id: { in: commandeIds }, tenantId },
-        select: { id: true, reference: true, client: { select: { nom: true } } },
-      });
-      commandesMap = Object.fromEntries(commandes.map((c) => [c.id, c]));
-    }
-
-    const itemsEnrichis = items.map((of) => ({
-      ...of,
-      commande: of.commandeId ? (commandesMap[of.commandeId] ?? null) : null,
-    }));
-
-    return { items: itemsEnrichis, total, page, totalPages: Math.ceil(total / limite), compteurs };
+    return { items, total, page, totalPages: Math.ceil(total / limite), compteurs };
   }
 
   async getOF(tenantId: string, id: string) {
@@ -66,23 +48,14 @@ export class ProductionService {
       where: { id, tenantId },
       include: {
         machine: true,
+        commande: { select: { id: true, reference: true, client: { select: { nom: true } } } },
         consommations: {
           include: { matierePremiere: true },
         },
       },
     });
     if (!of) throw new NotFoundException('Ordre de fabrication introuvable');
-
-    // Enrichissement manuel avec la commande liée
-    let commande: { id: string; reference: string; client?: { nom: string } | null } | null = null;
-    if (of.commandeId) {
-      commande = await this.prisma.commande.findFirst({
-        where: { id: of.commandeId, tenantId },
-        select: { id: true, reference: true, client: { select: { nom: true } } },
-      });
-    }
-
-    return { ...of, commande };
+    return of;
   }
 
   async creerOF(tenantId: string, _userId: string, data: {
@@ -111,11 +84,22 @@ export class ProductionService {
         dateDebutPrevue: data.dateDebutPrevue ? new Date(data.dateDebutPrevue) : null,
         dateFinPrevue:   data.dateFinPrevue   ? new Date(data.dateFinPrevue)   : null,
       },
+      include: {
+        machine: { select: { nom: true, code: true } },
+        commande: { select: { id: true, reference: true } },
+      },
     });
   }
 
-  async changerStatutOF(tenantId: string, id: string, statut: string, quantiteProduite?: number) {
-    const of = await this.prisma.ordreFabrication.findFirst({ where: { id, tenantId } });
+  async changerStatutOF(
+    tenantId: string,
+    id: string,
+    statut: string,
+    quantiteProduite?: number,
+  ) {
+    const of = await this.prisma.ordreFabrication.findFirst({
+      where: { id, tenantId },
+    });
     if (!of) throw new NotFoundException('OF introuvable');
 
     const transitionsValides: Record<string, string[]> = {
@@ -139,7 +123,55 @@ export class ProductionService {
       if (quantiteProduite !== undefined) updateData.quantiteProduite = quantiteProduite;
     }
 
-    return this.prisma.ordreFabrication.update({ where: { id }, data: updateData });
+    return this.prisma.$transaction(async (tx) => {
+      const ofUpdated = await tx.ordreFabrication.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // ── Statut machine lié à l'OF ─────────────────────────────────────────────
+      if (of.machineId) {
+        if (statut === 'en_cours') {
+          await tx.machine.update({
+            where: { id: of.machineId },
+            data: { statut: 'en_production' },
+          });
+        } else if (statut === 'termine' || statut === 'annule') {
+          await tx.machine.update({
+            where: { id: of.machineId },
+            data: { statut: 'disponible' },
+          });
+        }
+      }
+
+      // ── Clôture OF : impacts stock produit fini ──────────────────────────────
+      if (statut === 'termine' && quantiteProduite && quantiteProduite > 0) {
+        // 1. Incrémenter le stock du produit fini
+        await tx.produit.update({
+          where: { id: of.produitId },
+          data: { stockActuel: { increment: quantiteProduite } },
+        });
+
+        // 2. Enregistrer le mouvement d'entrée en stock
+        await tx.mouvementStock.create({
+          data: {
+            tenantId,
+            type: 'entree_production',
+            reference: `OF-${of.reference}`,
+            produitId: of.produitId,
+            quantite: quantiteProduite,
+            motif: `Production OF ${of.reference}`,
+          },
+        });
+
+        // 3. Vérifier si la commande liée peut passer à "prête"
+        if (of.commandeId) {
+          await this.verifierCommandePrete(tx, tenantId, of.commandeId);
+        }
+      }
+
+      return ofUpdated;
+    });
   }
 
   // ─── Consommation matières premières ───────────────────────────────────────
@@ -240,6 +272,44 @@ export class ProductionService {
     ]);
 
     return { items, total, page, totalPages: Math.ceil(total / limite) };
+  }
+
+  // ─── Logique interne ────────────────────────────────────────────────────────
+
+  // Vérifie si toutes les lignes de la commande sont couvertes par des OFs terminés
+  // et fait passer la commande en "prête" automatiquement
+  private async verifierCommandePrete(
+    tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
+    tenantId: string,
+    commandeId: string,
+  ) {
+    const commande = await tx.commande.findFirst({
+      where: { id: commandeId, tenantId, statut: 'en_production' },
+      include: { lignes: true },
+    });
+    if (!commande) return;
+
+    const ofsTermines = await tx.ordreFabrication.findMany({
+      where: { commandeId, tenantId, statut: 'termine' },
+      select: { produitId: true, quantiteProduite: true },
+    });
+
+    // Cumul par produit parmi les OFs terminés
+    const produitMap: Record<string, number> = {};
+    for (const of_ of ofsTermines) {
+      produitMap[of_.produitId] = (produitMap[of_.produitId] ?? 0) + Number(of_.quantiteProduite);
+    }
+
+    const toutCouvert = commande.lignes.every(
+      (l) => (produitMap[l.produitId] ?? 0) >= Number(l.quantite),
+    );
+
+    if (toutCouvert) {
+      await tx.commande.update({
+        where: { id: commandeId },
+        data: { statut: 'prete' },
+      });
+    }
   }
 
   private async genererReferenceOF(tenantId: string): Promise<string> {

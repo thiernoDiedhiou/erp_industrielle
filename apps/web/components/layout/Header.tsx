@@ -87,7 +87,7 @@ export function Header({ user, tenantSlug }: HeaderProps) {
               <div className="py-1">
                 <button
                   type="button"
-                  onClick={() => { setOuvert(false); router.push(`/${tenantSlug}/parametres`); }}
+                  onClick={() => { setOuvert(false); router.push(`/${tenantSlug}/profil`); }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   <User size={15} className="text-gray-400" />
