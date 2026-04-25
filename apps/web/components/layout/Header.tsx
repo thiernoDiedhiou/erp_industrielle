@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthUser } from '@/lib/auth';
-import { ChevronDown, LogOut, User, Settings } from 'lucide-react';
+import { AuthUser, logout } from '@/lib/auth';
+import { ChevronDown, LogOut, User, Settings, Menu } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -18,9 +18,10 @@ const ROLE_LABELS: Record<string, string> = {
 interface HeaderProps {
   user: AuthUser;
   tenantSlug: string;
+  onMenuClick: () => void;
 }
 
-export function Header({ user, tenantSlug }: HeaderProps) {
+export function Header({ user, tenantSlug, onMenuClick }: HeaderProps) {
   const [ouvert, setOuvert] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -35,23 +36,31 @@ export function Header({ user, tenantSlug }: HeaderProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const seDeconnecter = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    router.replace('/login');
-  };
 
   const initiale = user.nom.charAt(0).toUpperCase();
 
   return (
-    <header className="bg-white border-b px-6 py-3 flex items-center justify-between">
-      {/* Nom du tenant */}
-      <div>
+    <header className="bg-white border-b px-4 md:px-6 py-3 flex items-center justify-between gap-3">
+      {/* Hamburger — mobile uniquement */}
+      <button
+        type="button"
+        aria-label="Ouvrir le menu"
+        onClick={onMenuClick}
+        className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
+      >
+        <Menu size={20} />
+      </button>
+
+      {/* Nom du tenant — caché sur mobile (visible dans la sidebar) */}
+      <div className="hidden md:block">
         <h2 className="font-semibold text-gray-800">{user.tenant.nom}</h2>
       </div>
 
+      {/* Spacer */}
+      <div className="flex-1" />
+
       {/* Actions droite */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         <NotificationBell />
 
         {/* Profil cliquable */}
@@ -62,7 +71,7 @@ export function Header({ user, tenantSlug }: HeaderProps) {
             onClick={() => setOuvert((v) => !v)}
             className="flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 hover:bg-gray-100 transition-colors"
           >
-            <div className="w-8 h-8 rounded-full bg-blue-700 text-white flex items-center justify-center font-semibold text-xs">
+            <div className="w-8 h-8 rounded-full bg-blue-700 text-white flex items-center justify-center font-semibold text-xs flex-shrink-0">
               {initiale}
             </div>
             <div className="hidden md:block text-left">
@@ -71,13 +80,13 @@ export function Header({ user, tenantSlug }: HeaderProps) {
             </div>
             <ChevronDown
               size={14}
-              className={`text-gray-400 transition-transform ${ouvert ? 'rotate-180' : ''}`}
+              className={`hidden md:block text-gray-400 transition-transform ${ouvert ? 'rotate-180' : ''}`}
             />
           </button>
 
           {ouvert && (
             <div className="absolute right-0 top-12 w-52 bg-white rounded-xl shadow-lg border z-50 overflow-hidden">
-              {/* En-tête */}
+              {/* En-tête dropdown */}
               <div className="px-4 py-3 border-b bg-gray-50">
                 <p className="text-sm font-semibold text-gray-800">{user.nom}</p>
                 <p className="text-xs text-gray-400 truncate">{user.email}</p>
@@ -109,7 +118,7 @@ export function Header({ user, tenantSlug }: HeaderProps) {
               <div className="border-t py-1">
                 <button
                   type="button"
-                  onClick={seDeconnecter}
+                  onClick={logout}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 >
                   <LogOut size={15} />

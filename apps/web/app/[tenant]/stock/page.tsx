@@ -322,68 +322,82 @@ export default function StockPage() {
             </div>
             {loadingMp ? (
               <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-700" /></div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[620px]">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Matière</th>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Fournisseur</th>
-                      <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Stock actuel</th>
-                      <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Seuil min</th>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">État</th>
-                      <th scope="col" className="px-4 py-3 sr-only">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {matieres.map((m) => {
-                      const enAlerte = m.stockActuel <= (m.stockMin ?? 0);
-                      return (
-                        <tr key={m.id} className={`hover:bg-gray-50 ${enAlerte ? 'bg-red-50' : ''}`}>
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-sm text-gray-800">{m.nom}</p>
-                            {m.reference && <p className="text-xs text-gray-400">{m.reference}</p>}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">{m.fournisseur?.nom || '—'}</td>
-                          <td className="px-4 py-3 text-right">
-                            <span className={`font-semibold text-sm ${enAlerte ? 'text-red-600' : 'text-gray-800'}`}>{m.stockActuel}</span>
-                            <span className="text-xs text-gray-400 ml-1">{m.unite}</span>
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-500">{m.stockMin ?? '—'}</td>
-                          <td className="px-4 py-3">
-                            {enAlerte ? (
-                              <span className="flex items-center gap-1 text-xs text-red-600"><TrendingDown size={12} /> Alerte</span>
-                            ) : (
-                              <span className="text-xs text-green-600">Normal</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1 justify-end">
-                              {peutEcrire && (
-                                <button type="button" aria-label="Faire l'inventaire"
-                                  onClick={() => ouvrirInventaireMP(m)}
-                                  className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Inventaire">
-                                  <ClipboardList size={14} />
-                                </button>
-                              )}
-                              {peutEcrire && (
-                                <button type="button" aria-label="Modifier"
-                                  onClick={() => ouvrirEdition(m)}
-                                  className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600">
-                                  <Pencil size={14} />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {!loadingMp && matieres.length === 0 && (
+            ) : matieres.length === 0 ? (
               <div className="text-center py-8 text-gray-400 text-sm">Aucune matière première</div>
+            ) : (
+              <>
+                {/* Cartes mobile */}
+                <div className="md:hidden divide-y">
+                  {matieres.map((m) => {
+                    const enAlerte = m.stockActuel <= (m.stockMin ?? 0);
+                    return (
+                      <div key={m.id} className={`p-4 ${enAlerte ? 'bg-red-50/50' : ''}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <p className="font-semibold text-sm text-gray-800">{m.nom}</p>
+                            {m.reference && <p className="text-xs text-gray-400">{m.reference}</p>}
+                          </div>
+                          {enAlerte
+                            ? <span className="flex items-center gap-1 text-xs text-red-600 font-medium"><TrendingDown size={12} /> Alerte</span>
+                            : <span className="text-xs text-green-600 font-medium">Normal</span>}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm mb-3">
+                          <div><p className="text-xs text-gray-400">Stock</p><p className={`font-bold ${enAlerte ? 'text-red-600' : 'text-gray-800'}`}>{m.stockActuel} <span className="text-xs font-normal text-gray-400">{m.unite}</span></p></div>
+                          <div><p className="text-xs text-gray-400">Min</p><p className="font-medium text-gray-600">{m.stockMin ?? '—'}</p></div>
+                          {m.fournisseur && <div className="min-w-0"><p className="text-xs text-gray-400">Fourn.</p><p className="text-xs text-gray-600 truncate">{m.fournisseur.nom}</p></div>}
+                        </div>
+                        {peutEcrire && (
+                          <div className="flex gap-2">
+                            <button type="button" aria-label="Inventaire" onClick={() => ouvrirInventaireMP(m)}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs hover:bg-blue-100">
+                              <ClipboardList size={12} /> Inventaire
+                            </button>
+                            <button type="button" aria-label="Modifier" onClick={() => ouvrirEdition(m)}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs hover:bg-gray-200">
+                              <Pencil size={12} /> Modifier
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Table desktop */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full min-w-[620px]">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Matière</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Fournisseur</th>
+                        <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Stock actuel</th>
+                        <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Seuil min</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">État</th>
+                        <th scope="col" className="px-4 py-3 sr-only">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {matieres.map((m) => {
+                        const enAlerte = m.stockActuel <= (m.stockMin ?? 0);
+                        return (
+                          <tr key={m.id} className={`hover:bg-gray-50 ${enAlerte ? 'bg-red-50' : ''}`}>
+                            <td className="px-4 py-3"><p className="font-medium text-sm text-gray-800">{m.nom}</p>{m.reference && <p className="text-xs text-gray-400">{m.reference}</p>}</td>
+                            <td className="px-4 py-3 text-sm text-gray-500">{m.fournisseur?.nom || '—'}</td>
+                            <td className="px-4 py-3 text-right"><span className={`font-semibold text-sm ${enAlerte ? 'text-red-600' : 'text-gray-800'}`}>{m.stockActuel}</span><span className="text-xs text-gray-400 ml-1">{m.unite}</span></td>
+                            <td className="px-4 py-3 text-right text-sm text-gray-500">{m.stockMin ?? '—'}</td>
+                            <td className="px-4 py-3">{enAlerte ? <span className="flex items-center gap-1 text-xs text-red-600"><TrendingDown size={12} /> Alerte</span> : <span className="text-xs text-green-600">Normal</span>}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1 justify-end">
+                                {peutEcrire && <button type="button" aria-label="Inventaire" onClick={() => ouvrirInventaireMP(m)} className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"><ClipboardList size={14} /></button>}
+                                {peutEcrire && <button type="button" aria-label="Modifier" onClick={() => ouvrirEdition(m)} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"><Pencil size={14} /></button>}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </>
@@ -419,75 +433,71 @@ export default function StockPage() {
             </div>
             {loadingPf ? (
               <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-700" /></div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[560px]">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Produit</th>
-                      <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Stock actuel</th>
-                      <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Seuil min</th>
-                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">État</th>
-                      <th scope="col" className="px-4 py-3 sr-only">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {produitsFinis.map((p) => {
-                      const enAlerte = Number(p.stockActuel) <= Number(p.stockMin ?? 0);
-                      return (
-                        <tr key={p.id} className={`hover:bg-gray-50 ${enAlerte ? 'bg-red-50' : ''}`}>
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-sm text-gray-800">{p.nom}</p>
-                            {p.reference && <p className="text-xs text-gray-400">{p.reference}</p>}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className={`font-semibold text-sm ${enAlerte ? 'text-red-600' : 'text-gray-800'}`}>
-                              {Number(p.stockActuel)}
-                            </span>
-                            <span className="text-xs text-gray-400 ml-1">{p.unite}</span>
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-500">{p.stockMin ?? '—'}</td>
-                          <td className="px-4 py-3">
-                            {enAlerte ? (
-                              <span className="flex items-center gap-1 text-xs text-red-600"><TrendingDown size={12} /> Alerte</span>
-                            ) : (
-                              <span className="text-xs text-green-600">Normal</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1 justify-end">
-                              {peutEcrire && (
-                                <button type="button" aria-label="Inventaire"
-                                  onClick={() => ouvrirInventairePF(p)}
-                                  className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Ajuster le stock">
-                                  <ClipboardList size={14} />
-                                </button>
-                              )}
-                              {peutEcrire && (
-                                <button type="button" aria-label="Modifier"
-                                  onClick={() => ouvrirEditionPF(p)}
-                                  className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600" title="Modifier">
-                                  <Pencil size={14} />
-                                </button>
-                              )}
-                              {peutSupprimer && (
-                                <button type="button" aria-label="Supprimer"
-                                  onClick={() => setConfirmDeletePf(p)}
-                                  className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500" title="Supprimer">
-                                  <Trash2 size={14} />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {!loadingPf && produitsFinis.length === 0 && (
+            ) : produitsFinis.length === 0 ? (
               <div className="text-center py-8 text-gray-400 text-sm">Aucun produit fini</div>
+            ) : (
+              <>
+                {/* Cartes mobile */}
+                <div className="md:hidden divide-y">
+                  {produitsFinis.map((p) => {
+                    const enAlerte = Number(p.stockActuel) <= Number(p.stockMin ?? 0);
+                    return (
+                      <div key={p.id} className={`p-4 ${enAlerte ? 'bg-red-50/50' : ''}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <p className="font-semibold text-sm text-gray-800">{p.nom}</p>
+                            {p.reference && <p className="text-xs text-gray-400">{p.reference}</p>}
+                          </div>
+                          {enAlerte ? <span className="flex items-center gap-1 text-xs text-red-600 font-medium"><TrendingDown size={12} /> Alerte</span> : <span className="text-xs text-green-600 font-medium">Normal</span>}
+                        </div>
+                        <div className="flex gap-4 text-sm mb-3">
+                          <div><p className="text-xs text-gray-400">Stock</p><p className={`font-bold ${enAlerte ? 'text-red-600' : 'text-gray-800'}`}>{Number(p.stockActuel)} <span className="text-xs font-normal text-gray-400">{p.unite}</span></p></div>
+                          <div><p className="text-xs text-gray-400">Min</p><p className="font-medium text-gray-600">{p.stockMin ?? '—'}</p></div>
+                        </div>
+                        <div className="flex gap-2">
+                          {peutEcrire && <button type="button" aria-label="Inventaire" onClick={() => ouvrirInventairePF(p)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs hover:bg-blue-100"><ClipboardList size={12} /> Inventaire</button>}
+                          {peutEcrire && <button type="button" aria-label="Modifier" onClick={() => ouvrirEditionPF(p)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs hover:bg-gray-200"><Pencil size={12} /> Modifier</button>}
+                          {peutSupprimer && <button type="button" aria-label="Supprimer" onClick={() => setConfirmDeletePf(p)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs hover:bg-red-100"><Trash2 size={12} /></button>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Table desktop */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full min-w-[560px]">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Produit</th>
+                        <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Stock actuel</th>
+                        <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Seuil min</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">État</th>
+                        <th scope="col" className="px-4 py-3 sr-only">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {produitsFinis.map((p) => {
+                        const enAlerte = Number(p.stockActuel) <= Number(p.stockMin ?? 0);
+                        return (
+                          <tr key={p.id} className={`hover:bg-gray-50 ${enAlerte ? 'bg-red-50' : ''}`}>
+                            <td className="px-4 py-3"><p className="font-medium text-sm text-gray-800">{p.nom}</p>{p.reference && <p className="text-xs text-gray-400">{p.reference}</p>}</td>
+                            <td className="px-4 py-3 text-right"><span className={`font-semibold text-sm ${enAlerte ? 'text-red-600' : 'text-gray-800'}`}>{Number(p.stockActuel)}</span><span className="text-xs text-gray-400 ml-1">{p.unite}</span></td>
+                            <td className="px-4 py-3 text-right text-sm text-gray-500">{p.stockMin ?? '—'}</td>
+                            <td className="px-4 py-3">{enAlerte ? <span className="flex items-center gap-1 text-xs text-red-600"><TrendingDown size={12} /> Alerte</span> : <span className="text-xs text-green-600">Normal</span>}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1 justify-end">
+                                {peutEcrire && <button type="button" aria-label="Inventaire" onClick={() => ouvrirInventairePF(p)} className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"><ClipboardList size={14} /></button>}
+                                {peutEcrire && <button type="button" aria-label="Modifier" onClick={() => ouvrirEditionPF(p)} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"><Pencil size={14} /></button>}
+                                {peutSupprimer && <button type="button" aria-label="Supprimer" onClick={() => setConfirmDeletePf(p)} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </>
@@ -503,52 +513,66 @@ export default function StockPage() {
           </div>
           {loadingMouvements ? (
             <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-700" /></div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[620px]">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Date</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Type</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Article</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Référence</th>
-                    <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Quantité</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {mouvements.map((m) => {
-                    const cfg = TYPE_MOUVEMENT[m.type] ?? { label: m.type, style: 'text-gray-700 bg-gray-50', icon: null };
-                    const article = m.matierePremiere?.nom ?? m.produit?.nom ?? '—';
-                    const unite = m.matierePremiere?.unite ?? '';
-                    const isEntree = m.type.startsWith('entree') || m.type === 'ajustement_positif';
-                    return (
-                      <tr key={m.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{fmt(m.createdAt)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full w-fit font-medium ${cfg.style}`}>
-                            {cfg.icon} {cfg.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="text-sm text-gray-800">{article}</p>
-                          {m.motif && <p className="text-xs text-gray-400">{m.motif}</p>}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-500">{m.reference ?? '—'}</td>
-                        <td className="px-4 py-3 text-right">
-                          <span className={`font-semibold text-sm ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
-                            {isEntree ? '+' : '−'}{Number(m.quantite)}
-                          </span>
-                          {unite && <span className="text-xs text-gray-400 ml-1">{unite}</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {!loadingMouvements && mouvements.length === 0 && (
+          ) : mouvements.length === 0 ? (
             <div className="text-center py-8 text-gray-400 text-sm">Aucun mouvement enregistré</div>
+          ) : (
+            <>
+              {/* Cartes mobile */}
+              <div className="md:hidden divide-y">
+                {mouvements.map((m) => {
+                  const cfg = TYPE_MOUVEMENT[m.type] ?? { label: m.type, style: 'text-gray-700 bg-gray-50', icon: null };
+                  const article = m.matierePremiere?.nom ?? m.produit?.nom ?? '—';
+                  const unite = m.matierePremiere?.unite ?? '';
+                  const isEntree = m.type.startsWith('entree') || m.type === 'ajustement_positif';
+                  return (
+                    <div key={m.id} className="p-4 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                          <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${cfg.style}`}>{cfg.icon} {cfg.label}</span>
+                          <span className="text-xs text-gray-400">{fmt(m.createdAt)}</span>
+                        </div>
+                        <p className="text-sm text-gray-800 truncate">{article}</p>
+                        {m.motif && <p className="text-xs text-gray-400">{m.motif}</p>}
+                      </div>
+                      <p className={`font-bold text-sm flex-shrink-0 ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
+                        {isEntree ? '+' : '−'}{Number(m.quantite)}{unite && <span className="text-xs font-normal text-gray-400 ml-0.5">{unite}</span>}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Table desktop */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full min-w-[620px]">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Date</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Type</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Article</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Référence</th>
+                      <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Quantité</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {mouvements.map((m) => {
+                      const cfg = TYPE_MOUVEMENT[m.type] ?? { label: m.type, style: 'text-gray-700 bg-gray-50', icon: null };
+                      const article = m.matierePremiere?.nom ?? m.produit?.nom ?? '—';
+                      const unite = m.matierePremiere?.unite ?? '';
+                      const isEntree = m.type.startsWith('entree') || m.type === 'ajustement_positif';
+                      return (
+                        <tr key={m.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{fmt(m.createdAt)}</td>
+                          <td className="px-4 py-3"><span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full w-fit font-medium ${cfg.style}`}>{cfg.icon} {cfg.label}</span></td>
+                          <td className="px-4 py-3"><p className="text-sm text-gray-800">{article}</p>{m.motif && <p className="text-xs text-gray-400">{m.motif}</p>}</td>
+                          <td className="px-4 py-3 text-xs text-gray-500">{m.reference ?? '—'}</td>
+                          <td className="px-4 py-3 text-right"><span className={`font-semibold text-sm ${isEntree ? 'text-green-700' : 'text-red-700'}`}>{isEntree ? '+' : '−'}{Number(m.quantite)}</span>{unite && <span className="text-xs text-gray-400 ml-1">{unite}</span>}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}

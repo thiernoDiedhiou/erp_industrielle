@@ -145,104 +145,167 @@ export default function ClientsPage() {
         <div className="flex justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700" />
         </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px]">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Nom</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Type</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Ville</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Contact</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Statut</th>
-                  <th scope="col" className="px-4 py-3 sr-only">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {data?.items?.map((c: Client) => (
-                  <tr key={c.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold flex-shrink-0">
-                          {c.nom.charAt(0)}
-                        </div>
-                        <div>
-                          <button
-                            type="button"
-                            onClick={() => router.push(`/${params.tenant}/clients/${c.id}`)}
-                            className="font-medium text-sm text-gray-800 hover:text-blue-700 hover:underline text-left"
-                          >
-                            {c.nom}
-                          </button>
-                          {c.ninea && <p className="text-xs text-gray-400">NINEA: {c.ninea}</p>}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.type ? (
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${TYPE_STYLES[c.type] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {c.type}
-                        </span>
-                      ) : <span className="text-gray-300 text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.ville ? (
-                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                          <MapPin size={10} /> {c.ville}
-                        </div>
-                      ) : <span className="text-gray-300 text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="space-y-0.5">
-                        {c.email && (
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <Mail size={10} /> {c.email}
-                          </div>
-                        )}
-                        {c.telephone && (
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <Phone size={10} /> {c.telephone}
-                          </div>
-                        )}
-                        {c.contact && <p className="text-xs text-gray-400">{c.contact}</p>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUT_STYLES[c.statut ?? 'actif'] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {c.statut ?? 'actif'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 justify-end">
-                        <button type="button" aria-label={`Voir ${c.nom}`}
-                          onClick={() => router.push(`/${params.tenant}/clients/${c.id}`)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600">
-                          <Eye size={14} />
-                        </button>
-                        {peutEcrire && (
-                          <button type="button" aria-label={`Modifier ${c.nom}`} onClick={() => ouvrirEdition(c)}
-                            className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
-                            <Pencil size={14} />
-                          </button>
-                        )}
-                        {peutSupprimer && (
-                          <button type="button" aria-label={`Supprimer ${c.nom}`} onClick={() => setConfirmDelete(c)}
-                            className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600">
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {data?.items?.length === 0 && (
-            <div className="text-center py-8 text-gray-400 text-sm">Aucun client trouvé</div>
-          )}
+      ) : data?.items?.length === 0 ? (
+        <div className="bg-white rounded-xl border text-center py-12 text-gray-400 text-sm">
+          Aucun client trouvé
         </div>
+      ) : (
+        <>
+          {/* ── Vue CARTES — mobile uniquement ── */}
+          <div className="md:hidden space-y-3">
+            {data?.items?.map((c: Client) => (
+              <div key={c.id} className="bg-white rounded-xl border shadow-sm p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                      {c.nom.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/${params.tenant}/clients/${c.id}`)}
+                        className="font-semibold text-sm text-gray-800 hover:text-blue-700 text-left truncate max-w-[180px] block"
+                      >
+                        {c.nom}
+                      </button>
+                      {c.ninea && <p className="text-xs text-gray-400 mt-0.5">NINEA: {c.ninea}</p>}
+                    </div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${STATUT_STYLES[c.statut ?? 'actif'] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {c.statut ?? 'actif'}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+                  {c.type && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${TYPE_STYLES[c.type] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {c.type}
+                    </span>
+                  )}
+                  {c.ville && (
+                    <span className="flex items-center gap-1 text-xs text-gray-500">
+                      <MapPin size={11} /> {c.ville}
+                    </span>
+                  )}
+                  {c.telephone && (
+                    <a href={`tel:${c.telephone}`} className="flex items-center gap-1 text-xs text-blue-600">
+                      <Phone size={11} /> {c.telephone}
+                    </a>
+                  )}
+                  {c.email && (
+                    <a href={`mailto:${c.email}`} className="flex items-center gap-1 text-xs text-blue-600 truncate max-w-[200px]">
+                      <Mail size={11} /> {c.email}
+                    </a>
+                  )}
+                </div>
+
+                <div className="mt-3 flex items-center gap-2 justify-end border-t pt-3">
+                  <button type="button" onClick={() => router.push(`/${params.tenant}/clients/${c.id}`)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium hover:bg-gray-200">
+                    <Eye size={13} /> Voir
+                  </button>
+                  {peutEcrire && (
+                    <button type="button" onClick={() => ouvrirEdition(c)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium hover:bg-blue-100">
+                      <Pencil size={13} /> Modifier
+                    </button>
+                  )}
+                  {peutSupprimer && (
+                    <button type="button" onClick={() => setConfirmDelete(c)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100">
+                      <Trash2 size={13} /> Supprimer
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Vue TABLE — desktop uniquement ── */}
+          <div className="hidden md:block bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px]">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Nom</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Type</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Ville</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Contact</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Statut</th>
+                    <th scope="col" className="px-4 py-3 sr-only">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {data?.items?.map((c: Client) => (
+                    <tr key={c.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                            {c.nom.charAt(0)}
+                          </div>
+                          <div>
+                            <button type="button" onClick={() => router.push(`/${params.tenant}/clients/${c.id}`)}
+                              className="font-medium text-sm text-gray-800 hover:text-blue-700 hover:underline text-left">
+                              {c.nom}
+                            </button>
+                            {c.ninea && <p className="text-xs text-gray-400">NINEA: {c.ninea}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {c.type ? (
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${TYPE_STYLES[c.type] ?? 'bg-gray-100 text-gray-600'}`}>
+                            {c.type}
+                          </span>
+                        ) : <span className="text-gray-300 text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {c.ville ? (
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <MapPin size={10} /> {c.ville}
+                          </div>
+                        ) : <span className="text-gray-300 text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="space-y-0.5">
+                          {c.email && <div className="flex items-center gap-1 text-xs text-gray-500"><Mail size={10} /> {c.email}</div>}
+                          {c.telephone && <div className="flex items-center gap-1 text-xs text-gray-500"><Phone size={10} /> {c.telephone}</div>}
+                          {c.contact && <p className="text-xs text-gray-400">{c.contact}</p>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUT_STYLES[c.statut ?? 'actif'] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {c.statut ?? 'actif'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button type="button" aria-label={`Voir ${c.nom}`}
+                            onClick={() => router.push(`/${params.tenant}/clients/${c.id}`)}
+                            className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+                            <Eye size={14} />
+                          </button>
+                          {peutEcrire && (
+                            <button type="button" aria-label={`Modifier ${c.nom}`} onClick={() => ouvrirEdition(c)}
+                              className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                              <Pencil size={14} />
+                            </button>
+                          )}
+                          {peutSupprimer && (
+                            <button type="button" aria-label={`Supprimer ${c.nom}`} onClick={() => setConfirmDelete(c)}
+                              className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600">
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Modal création / édition */}

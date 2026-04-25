@@ -148,87 +148,131 @@ export default function MatieresPremiereesPage() {
         <div className="flex justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700" />
         </div>
+      ) : mpData?.items?.length === 0 ? (
+        <div className="bg-white rounded-xl border text-center py-12 text-gray-400 text-sm">Aucune matière première trouvée</div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px]">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Matière première</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Type</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Fournisseur</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Stock actuel</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Stock min.</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Prix achat</th>
-                  <th scope="col" className="px-4 py-3 sr-only">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {mpData?.items?.map((mp: MatierePremiere) => (
-                  <tr key={mp.id} className={`hover:bg-gray-50 ${mp.critique ? 'bg-red-50/30' : ''}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${mp.critique ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                          <Layers size={14} />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm text-gray-800 flex items-center gap-1">
-                            {mp.nom}
-                            {mp.isRecycle && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 rounded">recyclé</span>}
-                          </p>
-                          <p className="text-xs text-gray-400">{mp.reference}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{mp.type}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{mp.fournisseur?.nom ?? '—'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`text-sm font-semibold ${mp.critique ? 'text-red-600' : 'text-gray-800'}`}>
-                        {Number(mp.stockActuel).toLocaleString('fr-FR')} {mp.unite}
-                      </span>
-                      {mp.critique && <AlertTriangle size={12} className="text-red-500 inline ml-1" />}
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm text-gray-500">
-                      {Number(mp.stockMinimum).toLocaleString('fr-FR')} {mp.unite}
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm text-gray-600">
-                      {Number(mp.prixAchat).toLocaleString('fr-FR')} FCFA
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 justify-end">
-                        <button type="button" aria-label="Voir le détail" onClick={() => setDetailMP(mp)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600">
-                          <Eye size={14} />
-                        </button>
-                        {peutEcrire && (
-                          <button type="button" title="Mouvement stock" onClick={() => ouvrirStock(mp)}
-                            className="p-1.5 rounded hover:bg-green-50 text-gray-400 hover:text-green-600">
-                            <SlidersHorizontal size={14} />
-                          </button>
-                        )}
-                        {peutEcrire && (
-                          <button type="button" aria-label="Modifier" onClick={() => ouvrirEdition(mp)}
-                            className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
-                            <Pencil size={14} />
-                          </button>
-                        )}
-                        {peutSupprimer && (
-                          <button type="button" aria-label="Supprimer" onClick={() => setConfirmDelete(mp)}
-                            className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600">
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <>
+          {/* Vue CARTES — mobile */}
+          <div className="md:hidden space-y-3">
+            {mpData?.items?.map((mp: MatierePremiere) => (
+              <div key={mp.id} className={`bg-white rounded-xl border shadow-sm p-4 ${mp.critique ? 'border-red-200' : ''}`}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${mp.critique ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                      <Layers size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-gray-800 flex items-center gap-1 flex-wrap">
+                        {mp.nom}
+                        {mp.isRecycle && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 rounded">recyclé</span>}
+                        {mp.critique && <AlertTriangle size={12} className="text-red-500" />}
+                      </p>
+                      <p className="text-xs text-gray-400">{mp.reference} · {mp.type}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 my-3 text-center">
+                  <div className={`rounded-lg p-2 ${mp.critique ? 'bg-red-50' : 'bg-gray-50'}`}>
+                    <p className="text-xs text-gray-400">Stock actuel</p>
+                    <p className={`text-sm font-bold ${mp.critique ? 'text-red-600' : 'text-gray-800'}`}>{Number(mp.stockActuel).toLocaleString('fr-FR')}</p>
+                    <p className="text-xs text-gray-400">{mp.unite}</p>
+                  </div>
+                  <div className="rounded-lg p-2 bg-gray-50">
+                    <p className="text-xs text-gray-400">Min.</p>
+                    <p className="text-sm font-bold text-gray-600">{Number(mp.stockMinimum).toLocaleString('fr-FR')}</p>
+                    <p className="text-xs text-gray-400">{mp.unite}</p>
+                  </div>
+                  <div className="rounded-lg p-2 bg-gray-50">
+                    <p className="text-xs text-gray-400">Prix</p>
+                    <p className="text-xs font-bold text-gray-700">{Number(mp.prixAchat).toLocaleString('fr-FR')}</p>
+                    <p className="text-xs text-gray-400">FCFA</p>
+                  </div>
+                </div>
+
+                {mp.fournisseur && <p className="text-xs text-gray-500 mb-3">Fournisseur : {mp.fournisseur.nom}</p>}
+
+                <div className="flex items-center gap-2 border-t pt-3 justify-end">
+                  <button type="button" aria-label="Voir" onClick={() => setDetailMP(mp)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs hover:bg-gray-200">
+                    <Eye size={12} /> Voir
+                  </button>
+                  {peutEcrire && (
+                    <button type="button" aria-label="Mouvement stock" onClick={() => ouvrirStock(mp)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-50 text-green-700 text-xs hover:bg-green-100">
+                      <SlidersHorizontal size={12} /> Stock
+                    </button>
+                  )}
+                  {peutEcrire && (
+                    <button type="button" aria-label="Modifier" onClick={() => ouvrirEdition(mp)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs hover:bg-blue-100">
+                      <Pencil size={12} />
+                    </button>
+                  )}
+                  {peutSupprimer && (
+                    <button type="button" aria-label="Supprimer" onClick={() => setConfirmDelete(mp)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs hover:bg-red-100">
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-          {mpData?.items?.length === 0 && (
-            <div className="text-center py-8 text-gray-400 text-sm">Aucune matière première trouvée</div>
-          )}
-        </div>
+
+          {/* Vue TABLE — desktop */}
+          <div className="hidden md:block bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px]">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Matière première</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Type</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Fournisseur</th>
+                    <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Stock actuel</th>
+                    <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Stock min.</th>
+                    <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Prix achat</th>
+                    <th scope="col" className="px-4 py-3 sr-only">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {mpData?.items?.map((mp: MatierePremiere) => (
+                    <tr key={mp.id} className={`hover:bg-gray-50 ${mp.critique ? 'bg-red-50/30' : ''}`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${mp.critique ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}><Layers size={14} /></div>
+                          <div>
+                            <p className="font-medium text-sm text-gray-800 flex items-center gap-1">
+                              {mp.nom}
+                              {mp.isRecycle && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 rounded">recyclé</span>}
+                            </p>
+                            <p className="text-xs text-gray-400">{mp.reference}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{mp.type}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{mp.fournisseur?.nom ?? '—'}</td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`text-sm font-semibold ${mp.critique ? 'text-red-600' : 'text-gray-800'}`}>{Number(mp.stockActuel).toLocaleString('fr-FR')} {mp.unite}</span>
+                        {mp.critique && <AlertTriangle size={12} className="text-red-500 inline ml-1" />}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-gray-500">{Number(mp.stockMinimum).toLocaleString('fr-FR')} {mp.unite}</td>
+                      <td className="px-4 py-3 text-right text-sm text-gray-600">{Number(mp.prixAchat).toLocaleString('fr-FR')} FCFA</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button type="button" aria-label="Voir" onClick={() => setDetailMP(mp)} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"><Eye size={14} /></button>
+                          {peutEcrire && <button type="button" aria-label="Mouvement stock" onClick={() => ouvrirStock(mp)} className="p-1.5 rounded hover:bg-green-50 text-gray-400 hover:text-green-600"><SlidersHorizontal size={14} /></button>}
+                          {peutEcrire && <button type="button" aria-label="Modifier" onClick={() => ouvrirEdition(mp)} className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"><Pencil size={14} /></button>}
+                          {peutSupprimer && <button type="button" aria-label="Supprimer" onClick={() => setConfirmDelete(mp)} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"><Trash2 size={14} /></button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Modal détail matière première */}

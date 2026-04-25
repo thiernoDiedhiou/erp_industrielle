@@ -183,61 +183,95 @@ export default function FacturationPage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700" />
             </div>
           ) : (
-            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-              <div className="px-5 py-3 border-b bg-gray-50 flex items-center gap-2">
-                <Banknote size={16} className="text-green-600" />
-                <h2 className="font-semibold text-gray-700">Historique des paiements reçus</h2>
-                <span className="ml-auto text-xs text-gray-400">{paiements?.total ?? 0} paiement(s)</span>
-              </div>
-              <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px]">
-                <thead className="bg-gray-50 border-b text-xs text-gray-500">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-medium">Date</th>
-                    <th className="text-left px-4 py-3 font-medium">Facture</th>
-                    <th className="text-left px-4 py-3 font-medium">Client</th>
-                    <th className="text-left px-4 py-3 font-medium">Mode</th>
-                    <th className="text-left px-4 py-3 font-medium">Référence</th>
-                    <th className="text-right px-4 py-3 font-medium">Montant</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {paiements?.items?.map((p: {
-                    id: string;
-                    datePaiement: string;
-                    montant: number;
-                    mode: string;
-                    reference?: string;
-                    facture: { reference: string; commande?: { client?: { nom: string } } };
-                  }) => (
-                    <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {new Date(p.datePaiement).toLocaleDateString('fr-SN')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm font-medium text-blue-700">{p.facture.reference}</span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {p.facture.commande?.client?.nom || '—'}
-                      </td>
-                      <td className="px-4 py-3">
+            <>
+              {/* Vue CARTES — mobile */}
+              <div className="md:hidden space-y-3">
+                {paiements?.items?.length === 0 ? (
+                  <div className="bg-white rounded-xl border text-center py-10 text-gray-400 text-sm">Aucun paiement enregistré</div>
+                ) : paiements?.items?.map((p: {
+                  id: string;
+                  datePaiement: string;
+                  montant: number;
+                  mode: string;
+                  reference?: string;
+                  facture: { reference: string; commande?: { client?: { nom: string } } };
+                }) => (
+                  <div key={p.id} className="bg-white rounded-xl border shadow-sm p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold text-blue-700 text-sm">{p.facture.reference}</span>
+                      <span className="text-xs text-gray-400">{new Date(p.datePaiement).toLocaleDateString('fr-SN')}</span>
+                    </div>
+                    <p className="text-sm text-gray-700 mb-2">{p.facture.commande?.client?.nom || '—'}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         <span className="px-2 py-0.5 bg-gray-100 rounded-full text-xs text-gray-600">
                           {MODE_LABELS[p.mode] ?? p.mode}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-400">{p.reference || '—'}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-green-700">
-                        +{fmt(Number(p.montant))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        {p.reference && <span className="text-xs text-gray-400">{p.reference}</span>}
+                      </div>
+                      <span className="font-bold text-green-700 text-sm">+{fmt(Number(p.montant))}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-              {paiements?.items?.length === 0 && (
-                <div className="text-center py-8 text-gray-400 text-sm">Aucun paiement enregistré</div>
-              )}
-            </div>
+
+              {/* Vue TABLE — desktop */}
+              <div className="hidden md:block bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div className="px-5 py-3 border-b bg-gray-50 flex items-center gap-2">
+                  <Banknote size={16} className="text-green-600" />
+                  <h2 className="font-semibold text-gray-700">Historique des paiements reçus</h2>
+                  <span className="ml-auto text-xs text-gray-400">{paiements?.total ?? 0} paiement(s)</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px]">
+                    <thead className="bg-gray-50 border-b text-xs text-gray-500">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-medium">Date</th>
+                        <th className="text-left px-4 py-3 font-medium">Facture</th>
+                        <th className="text-left px-4 py-3 font-medium">Client</th>
+                        <th className="text-left px-4 py-3 font-medium">Mode</th>
+                        <th className="text-left px-4 py-3 font-medium">Référence</th>
+                        <th className="text-right px-4 py-3 font-medium">Montant</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {paiements?.items?.map((p: {
+                        id: string;
+                        datePaiement: string;
+                        montant: number;
+                        mode: string;
+                        reference?: string;
+                        facture: { reference: string; commande?: { client?: { nom: string } } };
+                      }) => (
+                        <tr key={p.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {new Date(p.datePaiement).toLocaleDateString('fr-SN')}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-sm font-medium text-blue-700">{p.facture.reference}</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {p.facture.commande?.client?.nom || '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="px-2 py-0.5 bg-gray-100 rounded-full text-xs text-gray-600">
+                              {MODE_LABELS[p.mode] ?? p.mode}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-400">{p.reference || '—'}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-green-700">
+                            +{fmt(Number(p.montant))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {paiements?.items?.length === 0 && (
+                  <div className="text-center py-8 text-gray-400 text-sm">Aucun paiement enregistré</div>
+                )}
+              </div>
+            </>
           )}
         </>
       )}
@@ -268,91 +302,155 @@ export default function FacturationPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700" />
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[660px]">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Référence</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Client</th>
-                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Montant TTC</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Échéance</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Statut</th>
-                <th scope="col" className="px-4 py-3 sr-only">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {data?.items?.map((f: Facture) => (
-                <tr key={f.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
+        <>
+          {/* Vue CARTES — mobile */}
+          <div className="md:hidden space-y-3">
+            {data?.items?.length === 0 ? (
+              <div className="bg-white rounded-xl border text-center py-10 text-gray-400 text-sm">Aucune facture</div>
+            ) : data?.items?.map((f: Facture) => (
+              <div key={f.id} className="bg-white rounded-xl border shadow-sm p-4">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/${params.tenant}/facturation/${f.id}`)}
+                    className="flex items-center gap-1.5"
+                  >
+                    <FileText size={13} className="text-blue-500 flex-shrink-0" />
+                    <span className="font-semibold text-blue-700 text-sm">{f.reference}</span>
+                  </button>
+                  <span className={`px-2 py-0.5 rounded-full text-xs flex-shrink-0 ${STATUTS_COULEURS[f.statut] || 'bg-gray-100 text-gray-600'}`}>
+                    {STATUTS_LABELS[f.statut] ?? f.statut}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700 mb-1">{f.commande?.client?.nom || '—'}</p>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-bold text-gray-800 text-sm">{formatMontant(f.totalTTC)}</span>
+                  <span className="text-xs text-gray-400">
+                    Échéance : {f.dateEcheance ? new Date(f.dateEcheance).toLocaleDateString('fr-SN') : '—'}
+                  </span>
+                </div>
+                <div className="flex gap-2 border-t pt-3">
+                  {peutLire && (
                     <button
                       type="button"
                       onClick={() => router.push(`/${params.tenant}/facturation/${f.id}`)}
-                      className="flex items-center gap-1.5 hover:underline"
+                      className="flex items-center gap-1 text-xs text-gray-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-gray-50"
                     >
-                      <FileText size={13} className="text-blue-500" />
-                      <span className="font-medium text-sm text-blue-700">{f.reference}</span>
+                      <Eye size={13} /> Voir
                     </button>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{f.commande?.client?.nom || '-'}</td>
-                  <td className="px-4 py-3 text-right font-medium text-sm text-gray-800">
-                    {formatMontant(f.totalTTC)}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
-                    {f.dateEcheance ? new Date(f.dateEcheance).toLocaleDateString('fr-SN') : '-'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${STATUTS_COULEURS[f.statut] || 'bg-gray-100 text-gray-600'}`}>
-                      {STATUTS_LABELS[f.statut] ?? f.statut}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 justify-end">
-                      {peutLire && (
-                        <button
-                          type="button"
-                          aria-label="Voir le détail"
-                          title="Détail"
-                          onClick={() => router.push(`/${params.tenant}/facturation/${f.id}`)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700"
-                        >
-                          <Eye size={15} />
-                        </button>
-                      )}
-                      {peutEcrire && f.statut !== 'payee' && f.statut !== 'annulee' && (
-                        <button
-                          type="button"
-                          aria-label="Enregistrer un paiement"
-                          title="Paiement"
-                          onClick={() => { setModalPaiement(f); setPaiementForm({ montant: String(f.totalTTC), modePaiement: 'virement', reference: '' }); }}
-                          className="p-1.5 rounded hover:bg-green-50 text-gray-400 hover:text-green-600"
-                        >
-                          <CreditCard size={15} />
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        aria-label="Télécharger PDF"
-                        title="PDF"
-                        onClick={() => telechargerPdf(f)}
-                        disabled={dlLoading === f.id}
-                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 disabled:opacity-40"
-                      >
-                        {dlLoading === f.id
-                          ? <span className="block w-[15px] h-[15px] border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                          : <Download size={15} />}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  )}
+                  {peutEcrire && f.statut !== 'payee' && f.statut !== 'annulee' && (
+                    <button
+                      type="button"
+                      onClick={() => { setModalPaiement(f); setPaiementForm({ montant: String(f.totalTTC), modePaiement: 'virement', reference: '' }); }}
+                      className="flex items-center gap-1 text-xs text-green-700 hover:text-green-800 px-2 py-1 rounded hover:bg-green-50"
+                    >
+                      <CreditCard size={13} /> Paiement
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => telechargerPdf(f)}
+                    disabled={dlLoading === f.id}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 disabled:opacity-40"
+                  >
+                    {dlLoading === f.id
+                      ? <span className="block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                      : <Download size={13} />}
+                    PDF
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-          {data?.items?.length === 0 && (
-            <div className="text-center py-8 text-gray-400 text-sm">Aucune facture</div>
-          )}
-        </div>
+
+          {/* Vue TABLE — desktop */}
+          <div className="hidden md:block bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[660px]">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Référence</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Client</th>
+                    <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Montant TTC</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Échéance</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Statut</th>
+                    <th scope="col" className="px-4 py-3 sr-only">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {data?.items?.map((f: Facture) => (
+                    <tr key={f.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/${params.tenant}/facturation/${f.id}`)}
+                          className="flex items-center gap-1.5 hover:underline"
+                        >
+                          <FileText size={13} className="text-blue-500" />
+                          <span className="font-medium text-sm text-blue-700">{f.reference}</span>
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{f.commande?.client?.nom || '-'}</td>
+                      <td className="px-4 py-3 text-right font-medium text-sm text-gray-800">
+                        {formatMontant(f.totalTTC)}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500">
+                        {f.dateEcheance ? new Date(f.dateEcheance).toLocaleDateString('fr-SN') : '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs ${STATUTS_COULEURS[f.statut] || 'bg-gray-100 text-gray-600'}`}>
+                          {STATUTS_LABELS[f.statut] ?? f.statut}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 justify-end">
+                          {peutLire && (
+                            <button
+                              type="button"
+                              aria-label="Voir le détail"
+                              title="Détail"
+                              onClick={() => router.push(`/${params.tenant}/facturation/${f.id}`)}
+                              className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700"
+                            >
+                              <Eye size={15} />
+                            </button>
+                          )}
+                          {peutEcrire && f.statut !== 'payee' && f.statut !== 'annulee' && (
+                            <button
+                              type="button"
+                              aria-label="Enregistrer un paiement"
+                              title="Paiement"
+                              onClick={() => { setModalPaiement(f); setPaiementForm({ montant: String(f.totalTTC), modePaiement: 'virement', reference: '' }); }}
+                              className="p-1.5 rounded hover:bg-green-50 text-gray-400 hover:text-green-600"
+                            >
+                              <CreditCard size={15} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            aria-label="Télécharger PDF"
+                            title="PDF"
+                            onClick={() => telechargerPdf(f)}
+                            disabled={dlLoading === f.id}
+                            className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 disabled:opacity-40"
+                          >
+                            {dlLoading === f.id
+                              ? <span className="block w-[15px] h-[15px] border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                              : <Download size={15} />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {data?.items?.length === 0 && (
+              <div className="text-center py-8 text-gray-400 text-sm">Aucune facture</div>
+            )}
+          </div>
+        </>
       )}
       </> /* fin onglet factures */}
 

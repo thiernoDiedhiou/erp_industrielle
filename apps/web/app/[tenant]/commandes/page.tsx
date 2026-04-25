@@ -96,65 +96,81 @@ export default function CommandesPage() {
         <div className="flex justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700" />
         </div>
+      ) : data?.items?.length === 0 ? (
+        <div className="bg-white rounded-xl border text-center py-12 text-gray-400 text-sm">Aucune commande</div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px]">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Référence</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Client</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Lignes</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Montant TTC</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Statut</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Date</th>
-                <th scope="col" className="px-4 py-3 sr-only">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {data?.items?.map((cmd: Commande) => (
-                <tr key={cmd.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => router.push(`/${params.tenant}/commandes/${cmd.id}`)}
-                      className="font-medium text-sm text-blue-700 hover:underline hover:text-blue-900"
-                    >
-                      {cmd.reference}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{cmd.client?.nom || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{cmd.lignes?.length || 0} ligne(s)</td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-800">
-                    {formatMontant(cmd.totalTTC)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${STATUTS_COULEURS[cmd.statut] || 'bg-gray-100 text-gray-600'}`}>
-                      {STATUTS_LABELS[cmd.statut] ?? cmd.statut}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">
-                    {new Date(cmd.createdAt).toLocaleDateString('fr-SN')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      aria-label="Voir le détail"
-                      onClick={() => router.push(`/${params.tenant}/commandes/${cmd.id}`)}
-                      className="text-gray-400 hover:text-blue-700"
-                    >
-                      <Eye size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <>
+          {/* Vue CARTES — mobile */}
+          <div className="md:hidden space-y-3">
+            {data?.items?.map((cmd: Commande) => (
+              <button
+                key={cmd.id}
+                type="button"
+                onClick={() => router.push(`/${params.tenant}/commandes/${cmd.id}`)}
+                className="w-full bg-white rounded-xl border shadow-sm p-4 text-left hover:border-blue-300 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <span className="font-semibold text-blue-700 text-sm">{cmd.reference}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs flex-shrink-0 ${STATUTS_COULEURS[cmd.statut] || 'bg-gray-100 text-gray-600'}`}>
+                    {STATUTS_LABELS[cmd.statut] ?? cmd.statut}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700 font-medium">{cmd.client?.nom || '—'}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-sm font-bold text-gray-800">{formatMontant(cmd.totalTTC)}</span>
+                  <span className="text-xs text-gray-400">{new Date(cmd.createdAt).toLocaleDateString('fr-SN')}</span>
+                </div>
+              </button>
+            ))}
           </div>
-          {data?.items?.length === 0 && (
-            <div className="text-center py-8 text-gray-400 text-sm">Aucune commande</div>
-          )}
-        </div>
+
+          {/* Vue TABLE — desktop */}
+          <div className="hidden md:block bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px]">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Référence</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Client</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Lignes</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Montant TTC</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Statut</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Date</th>
+                    <th scope="col" className="px-4 py-3 sr-only">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {data?.items?.map((cmd: Commande) => (
+                    <tr key={cmd.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <button type="button" onClick={() => router.push(`/${params.tenant}/commandes/${cmd.id}`)}
+                          className="font-medium text-sm text-blue-700 hover:underline hover:text-blue-900">
+                          {cmd.reference}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{cmd.client?.nom || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{cmd.lignes?.length || 0} ligne(s)</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-800">{formatMontant(cmd.totalTTC)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs ${STATUTS_COULEURS[cmd.statut] || 'bg-gray-100 text-gray-600'}`}>
+                          {STATUTS_LABELS[cmd.statut] ?? cmd.statut}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-400">{new Date(cmd.createdAt).toLocaleDateString('fr-SN')}</td>
+                      <td className="px-4 py-3">
+                        <button type="button" aria-label="Voir le détail"
+                          onClick={() => router.push(`/${params.tenant}/commandes/${cmd.id}`)}
+                          className="text-gray-400 hover:text-blue-700">
+                          <Eye size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

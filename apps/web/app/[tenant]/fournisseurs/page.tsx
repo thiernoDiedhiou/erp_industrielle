@@ -131,108 +131,122 @@ export default function FournisseursPage() {
         <div className="flex justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700" />
         </div>
+      ) : data?.items?.length === 0 ? (
+        <div className="bg-white rounded-xl border text-center py-12 text-gray-400 text-sm">Aucun fournisseur trouvé</div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px]">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Fournisseur</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Contact</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Délai livr.</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Note</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">MP liées</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Statut</th>
-                  <th scope="col" className="px-4 py-3 sr-only">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {data?.items?.map((f: Fournisseur) => (
-                  <tr key={f.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center flex-shrink-0">
-                          <Truck size={14} />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm text-gray-800">{f.nom}</p>
-                          <p className="text-xs text-gray-400">{f.reference}</p>
-                          {f.contactPrincipal && (
-                            <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
-                              <User size={10} /> {f.contactPrincipal}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="space-y-0.5">
-                        {f.email && (
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <Mail size={11} /> {f.email}
-                          </div>
-                        )}
-                        {f.telephone && (
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <Phone size={11} /> {f.telephone}
-                          </div>
-                        )}
-                        {f.conditionsPaiement && (
-                          <p className="text-xs text-gray-400">{f.conditionsPaiement}</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {f.delaiLivraisonMoyen ? (
-                        <div className="flex items-center gap-1 text-xs text-gray-600">
-                          <Clock size={11} /> {f.delaiLivraisonMoyen} j
-                        </div>
-                      ) : <span className="text-xs text-gray-400">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <EtoilesNote note={f.noteEvaluation} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-medium text-gray-700">{f._count?.matieresPrmieres ?? 0}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button type="button" onClick={() => toggleMutation.mutate(f.id)}>
-                        {f.actif
-                          ? <span className="px-2 py-1 rounded-full text-xs bg-green-50 text-green-700 flex items-center gap-1"><ToggleRight size={12} /> Actif</span>
-                          : <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-500 flex items-center gap-1"><ToggleLeft size={12} /> Inactif</span>
-                        }
+        <>
+          {/* Vue CARTES — mobile */}
+          <div className="md:hidden space-y-3">
+            {data?.items?.map((f: Fournisseur) => (
+              <div key={f.id} className="bg-white rounded-xl border shadow-sm p-4">
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center flex-shrink-0">
+                      <Truck size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-gray-800 truncate">{f.nom}</p>
+                      <p className="text-xs text-gray-400">{f.reference}</p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => toggleMutation.mutate(f.id)} className="flex-shrink-0">
+                    {f.actif
+                      ? <span className="px-2 py-0.5 rounded-full text-xs bg-green-50 text-green-700 flex items-center gap-1"><ToggleRight size={11} /> Actif</span>
+                      : <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-500 flex items-center gap-1"><ToggleLeft size={11} /> Inactif</span>
+                    }
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3">
+                  {f.telephone && <a href={`tel:${f.telephone}`} className="flex items-center gap-1 text-xs text-blue-600"><Phone size={11} /> {f.telephone}</a>}
+                  {f.email && <a href={`mailto:${f.email}`} className="flex items-center gap-1 text-xs text-blue-600 truncate max-w-[180px]"><Mail size={11} /> {f.email}</a>}
+                  {f.delaiLivraisonMoyen && <span className="flex items-center gap-1 text-xs text-gray-500"><Clock size={11} /> {f.delaiLivraisonMoyen} j</span>}
+                </div>
+                <div className="flex items-center justify-between border-t pt-3">
+                  <EtoilesNote note={f.noteEvaluation} />
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => router.push(`/${params.tenant}/fournisseurs/${f.id}`)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs hover:bg-gray-200">
+                      <Eye size={12} /> Voir
+                    </button>
+                    {peutEcrire && (
+                      <button type="button" onClick={() => ouvrirEdition(f)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs hover:bg-blue-100">
+                        <Pencil size={12} /> Modifier
                       </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 justify-end">
-                        <button type="button" aria-label="Voir le détail"
-                          onClick={() => router.push(`/${params.tenant}/fournisseurs/${f.id}`)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600">
-                          <Eye size={14} />
-                        </button>
-                        {peutEcrire && (
-                          <button type="button" aria-label="Modifier" onClick={() => ouvrirEdition(f)}
-                            className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
-                            <Pencil size={14} />
-                          </button>
-                        )}
-                        {peutSupprimer && (
-                          <button type="button" aria-label="Supprimer" onClick={() => setConfirmDelete(f)}
-                            className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600">
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    )}
+                    {peutSupprimer && (
+                      <button type="button" aria-label="Supprimer" onClick={() => setConfirmDelete(f)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs hover:bg-red-100">
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          {data?.items?.length === 0 && (
-            <div className="text-center py-8 text-gray-400 text-sm">Aucun fournisseur trouvé</div>
-          )}
-        </div>
+
+          {/* Vue TABLE — desktop */}
+          <div className="hidden md:block bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[780px]">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Fournisseur</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Contact</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Délai livr.</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Note</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">MP liées</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Statut</th>
+                    <th scope="col" className="px-4 py-3 sr-only">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {data?.items?.map((f: Fournisseur) => (
+                    <tr key={f.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center flex-shrink-0"><Truck size={14} /></div>
+                          <div>
+                            <p className="font-medium text-sm text-gray-800">{f.nom}</p>
+                            <p className="text-xs text-gray-400">{f.reference}</p>
+                            {f.contactPrincipal && <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5"><User size={10} /> {f.contactPrincipal}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="space-y-0.5">
+                          {f.email && <div className="flex items-center gap-1 text-xs text-gray-500"><Mail size={11} /> {f.email}</div>}
+                          {f.telephone && <div className="flex items-center gap-1 text-xs text-gray-500"><Phone size={11} /> {f.telephone}</div>}
+                          {f.conditionsPaiement && <p className="text-xs text-gray-400">{f.conditionsPaiement}</p>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {f.delaiLivraisonMoyen ? <div className="flex items-center gap-1 text-xs text-gray-600"><Clock size={11} /> {f.delaiLivraisonMoyen} j</div> : <span className="text-xs text-gray-400">—</span>}
+                      </td>
+                      <td className="px-4 py-3"><EtoilesNote note={f.noteEvaluation} /></td>
+                      <td className="px-4 py-3"><span className="text-sm font-medium text-gray-700">{f._count?.matieresPrmieres ?? 0}</span></td>
+                      <td className="px-4 py-3">
+                        <button type="button" onClick={() => toggleMutation.mutate(f.id)}>
+                          {f.actif
+                            ? <span className="px-2 py-1 rounded-full text-xs bg-green-50 text-green-700 flex items-center gap-1"><ToggleRight size={12} /> Actif</span>
+                            : <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-500 flex items-center gap-1"><ToggleLeft size={12} /> Inactif</span>}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button type="button" aria-label="Voir" onClick={() => router.push(`/${params.tenant}/fournisseurs/${f.id}`)} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"><Eye size={14} /></button>
+                          {peutEcrire && <button type="button" aria-label="Modifier" onClick={() => ouvrirEdition(f)} className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"><Pencil size={14} /></button>}
+                          {peutSupprimer && <button type="button" aria-label="Supprimer" onClick={() => setConfirmDelete(f)} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"><Trash2 size={14} /></button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Modal création / édition */}

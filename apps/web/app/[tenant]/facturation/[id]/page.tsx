@@ -173,28 +173,32 @@ export default function FactureDetailPage() {
   return (
     <div className="space-y-5 max-w-5xl">
       {/* En-tête */}
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => router.push(`/${tenant}/facturation`)}
-          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
-          aria-label="Retour"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-gray-800">{facture.reference}</h1>
-            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUTS_COULEURS[facture.statut] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-              {STATUTS_ICONS[facture.statut]}
-              {STATUTS_LABELS[facture.statut] ?? facture.statut}
-            </span>
+      <div className="space-y-3">
+        {/* Ligne 1 : retour + référence + statut */}
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            onClick={() => router.push(`/${tenant}/facturation`)}
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 flex-shrink-0 mt-0.5"
+            aria-label="Retour"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl font-bold text-gray-800">{facture.reference}</h1>
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUTS_COULEURS[facture.statut] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                {STATUTS_ICONS[facture.statut]}
+                {STATUTS_LABELS[facture.statut] ?? facture.statut}
+              </span>
+            </div>
+            <p className="text-sm text-gray-400 mt-0.5">
+              Commande {facture.commande.reference} — émise le {fmtDate(facture.createdAt)}
+            </p>
           </div>
-          <p className="text-sm text-gray-400 mt-0.5">
-            Commande {facture.commande.reference} — émise le {fmtDate(facture.createdAt)}
-          </p>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Ligne 2 : boutons d'action */}
+        <div className="flex gap-2 flex-wrap pl-1">
           {peutPayer && (
             <button
               type="button"
@@ -202,7 +206,7 @@ export default function FactureDetailPage() {
                 setPaiementForm({ montant: String(Math.round(restantDu)), mode: 'virement', reference: '', notes: '' });
                 setModalPaiement(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700"
             >
               <CreditCard size={15} />
               Enregistrer un paiement

@@ -320,7 +320,7 @@ export default function BomPage() {
                     placeholder="ex: Nomenclature Film PE 100µ"
                     className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-3">
                   <div>
                     <label htmlFor="bom-produit" className="text-sm text-gray-600">Produit fini *</label>
                     <select id="bom-produit" value={formData.produitFiniId}
@@ -349,12 +349,12 @@ export default function BomPage() {
 
               {/* — Composition — */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
                     Composition — matières premières
                   </h3>
                   <button type="button" onClick={ajouterItem}
-                    className="flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 font-medium border border-blue-200 rounded-lg px-2.5 py-1 hover:bg-blue-50">
+                    className="flex items-center justify-center gap-1.5 text-xs text-blue-700 hover:text-blue-900 font-medium border border-blue-200 rounded-lg px-3 py-2 hover:bg-blue-50 sm:py-1">
                     <Plus size={13} /> Ajouter un composant
                   </button>
                 </div>
@@ -364,9 +364,9 @@ export default function BomPage() {
                     Aucun composant ajouté. Cliquez sur « Ajouter un composant » pour définir la recette.
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {/* En-têtes colonnes */}
-                    <div className="grid grid-cols-[1fr_80px_80px_70px_32px] gap-2 text-xs text-gray-400 font-medium px-1">
+                  <div className="space-y-3">
+                    {/* En-têtes colonnes — desktop uniquement */}
+                    <div className="hidden md:grid grid-cols-[1fr_80px_80px_70px_32px] gap-2 text-xs text-gray-400 font-medium px-1">
                       <span>Matière première</span>
                       <span className="text-right">Quantité</span>
                       <span className="text-right">Unité</span>
@@ -375,55 +375,102 @@ export default function BomPage() {
                     </div>
 
                     {items.map((item, i) => (
-                      <div key={i} className="grid grid-cols-[1fr_80px_80px_70px_32px] gap-2 items-center">
-                        {/* Sélecteur MP */}
-                        <select
-                          title={`Matière première du composant ${i + 1}`}
-                          aria-label={`Matière première du composant ${i + 1}`}
-                          value={item.matierePremiereId}
-                          onChange={(e) => modifierItem(i, 'matierePremiereId', e.target.value)}
-                          className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full">
-                          <option value="">— Choisir une MP —</option>
-                          {(matieresPremieresDisponibles ?? []).map((mp) => (
-                            <option key={mp.id} value={mp.id}>{mp.nom} ({mp.reference})</option>
-                          ))}
-                        </select>
+                      <div key={i}>
+                        {/* Vue MOBILE : carte verticale */}
+                        <div className="md:hidden border rounded-xl p-3 bg-gray-50 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-500">Composant {i + 1}</span>
+                            <button type="button" onClick={() => supprimerItem(i)}
+                              aria-label={`Retirer le composant ${i + 1}`}
+                              className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
+                              <X size={14} />
+                            </button>
+                          </div>
+                          {/* MP pleine largeur */}
+                          <select
+                            aria-label={`Matière première du composant ${i + 1}`}
+                            value={item.matierePremiereId}
+                            onChange={(e) => modifierItem(i, 'matierePremiereId', e.target.value)}
+                            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">— Choisir une matière première —</option>
+                            {(matieresPremieresDisponibles ?? []).map((mp) => (
+                              <option key={mp.id} value={mp.id}>{mp.nom} ({mp.reference})</option>
+                            ))}
+                          </select>
+                          {/* Quantité + Unité + Pertes sur une ligne */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">Quantité</label>
+                              <input type="number" min={0} step="0.001" value={item.quantite}
+                                aria-label={`Quantité du composant ${i + 1}`}
+                                placeholder="1"
+                                onChange={(e) => modifierItem(i, 'quantite', e.target.value)}
+                                className="w-full border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right" />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">Unité</label>
+                              <select aria-label={`Unité du composant ${i + 1}`}
+                                value={item.unite}
+                                onChange={(e) => modifierItem(i, 'unite', e.target.value)}
+                                className="w-full border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                {['kg', 'g', 'l', 'ml', 'pce', 'm', 'm²', 'tonne'].map((u) => (
+                                  <option key={u} value={u}>{u}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">Pertes %</label>
+                              <input type="number" min={0} max={100} step="0.1" value={item.pertes}
+                                aria-label={`Pertes % du composant ${i + 1}`}
+                                placeholder="0"
+                                onChange={(e) => modifierItem(i, 'pertes', e.target.value)}
+                                className="w-full border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right" />
+                            </div>
+                          </div>
+                        </div>
 
-                        {/* Quantité */}
-                        <input
-                          type="number" min={0} step="0.001" value={item.quantite}
-                          title={`Quantité du composant ${i + 1}`}
-                          aria-label={`Quantité du composant ${i + 1}`}
-                          placeholder="1"
-                          onChange={(e) => modifierItem(i, 'quantite', e.target.value)}
-                          className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-right w-full" />
-
-                        {/* Unité */}
-                        <select
-                          title={`Unité du composant ${i + 1}`}
-                          aria-label={`Unité du composant ${i + 1}`}
-                          value={item.unite}
-                          onChange={(e) => modifierItem(i, 'unite', e.target.value)}
-                          className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full">
-                          {['kg', 'g', 'l', 'ml', 'pce', 'm', 'm²', 'tonne'].map((u) => (
-                            <option key={u} value={u}>{u}</option>
-                          ))}
-                        </select>
-
-                        {/* Pertes % */}
-                        <input
-                          type="number" min={0} max={100} step="0.1" value={item.pertes}
-                          title={`Pertes % du composant ${i + 1}`}
-                          aria-label={`Pertes % du composant ${i + 1}`}
-                          placeholder="0"
-                          onChange={(e) => modifierItem(i, 'pertes', e.target.value)}
-                          className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-right w-full" />
-
-                        {/* Supprimer */}
-                        <button type="button" onClick={() => supprimerItem(i)} aria-label={`Retirer le composant ${i + 1}`}
-                          className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-500">
-                          <X size={14} />
-                        </button>
+                        {/* Vue DESKTOP : grille dense */}
+                        <div className="hidden md:grid grid-cols-[1fr_80px_80px_70px_32px] gap-2 items-center">
+                          <select
+                            title={`Matière première du composant ${i + 1}`}
+                            aria-label={`Matière première du composant ${i + 1}`}
+                            value={item.matierePremiereId}
+                            onChange={(e) => modifierItem(i, 'matierePremiereId', e.target.value)}
+                            className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full">
+                            <option value="">— Choisir une MP —</option>
+                            {(matieresPremieresDisponibles ?? []).map((mp) => (
+                              <option key={mp.id} value={mp.id}>{mp.nom} ({mp.reference})</option>
+                            ))}
+                          </select>
+                          <input
+                            type="number" min={0} step="0.001" value={item.quantite}
+                            title={`Quantité du composant ${i + 1}`}
+                            aria-label={`Quantité du composant ${i + 1}`}
+                            placeholder="1"
+                            onChange={(e) => modifierItem(i, 'quantite', e.target.value)}
+                            className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-right w-full" />
+                          <select
+                            title={`Unité du composant ${i + 1}`}
+                            aria-label={`Unité du composant ${i + 1}`}
+                            value={item.unite}
+                            onChange={(e) => modifierItem(i, 'unite', e.target.value)}
+                            className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full">
+                            {['kg', 'g', 'l', 'ml', 'pce', 'm', 'm²', 'tonne'].map((u) => (
+                              <option key={u} value={u}>{u}</option>
+                            ))}
+                          </select>
+                          <input
+                            type="number" min={0} max={100} step="0.1" value={item.pertes}
+                            title={`Pertes % du composant ${i + 1}`}
+                            aria-label={`Pertes % du composant ${i + 1}`}
+                            placeholder="0"
+                            onChange={(e) => modifierItem(i, 'pertes', e.target.value)}
+                            className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-right w-full" />
+                          <button type="button" onClick={() => supprimerItem(i)} aria-label={`Retirer le composant ${i + 1}`}
+                            className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-500">
+                            <X size={14} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

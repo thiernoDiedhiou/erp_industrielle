@@ -33,6 +33,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
   const [user, setUser] = useState<UserPayload>(null);
   const [permissions, setPermissions] = useState<PermissionsMap | null>(null);
   const [branding, setBranding] = useState<Branding>(DEFAULT_BRANDING);
+  const [sidebarOuvert, setSidebarOuvert] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -64,10 +65,10 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
   return (
     <PermissionsContext.Provider value={permissions}>
       <div className="flex h-screen bg-gray-100">
-        <Sidebar tenantSlug={tenant} userRole={user.role} permissions={permissions} branding={branding} />
+        <Sidebar tenantSlug={tenant} userRole={user.role} permissions={permissions} branding={branding} ouvert={sidebarOuvert} setOuvert={setSidebarOuvert} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header user={user} tenantSlug={tenant} />
-          <main className="flex-1 overflow-auto p-4 md:p-6 pt-14 md:pt-6">{children}</main>
+          <Header user={user} tenantSlug={tenant} onMenuClick={() => setSidebarOuvert(true)} />
+          <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
         </div>
       </div>
     </PermissionsContext.Provider>
