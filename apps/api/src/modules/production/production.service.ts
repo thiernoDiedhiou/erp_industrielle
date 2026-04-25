@@ -4,10 +4,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BomService } from '../bom/bom.service';
 
 @Injectable()
 export class ProductionService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private bomService: BomService,
+  ) {}
 
   // ─── Ordres de fabrication ──────────────────────────────────────────────────
 
@@ -70,7 +74,7 @@ export class ProductionService {
   }) {
     const reference = await this.genererReferenceOF(tenantId);
 
-    return this.prisma.ordreFabrication.create({
+    const of = await this.prisma.ordreFabrication.create({
       data: {
         reference,
         tenantId,
@@ -89,6 +93,16 @@ export class ProductionService {
         commande: { select: { id: true, reference: true } },
       },
     });
+
+    // Joindre la nomenclature active du produit pour pré-remplissage UI
+    let bomSuggeree: Awaited<ReturnType<BomService['getPourProduit']>> | null = null;
+    try {
+      bomSuggeree = await this.bomService.getPourProduit(tenantId, data.produitId);
+    } catch {
+      // Aucune BOM active — non bloquant à la création
+    }
+
+    return { ...of, bomSuggeree };
   }
 
   async changerStatutOF(
@@ -112,6 +126,40 @@ export class ProductionService {
       throw new BadRequestException(
         `Transition "${of.statut}" → "${statut}" invalide`,
       );
+    }
+
+    // ── Lancement : vérifier stocks MP via BOM avant de démarrer ─────────────
+    if (statut === 'en_cours' && of.statut === 'planifie') {
+      let bom: Awaited<ReturnType<BomService['getPourProduit']>> | null = null;
+      try {
+        bom = await this.bomService.getPourProduit(tenantId, of.produitId);
+      } catch {
+        // Pas de BOM active — vérification ignorée, l'opérateur saisira manuellement
+      }
+
+      if (bom && bom.items.length > 0) {
+        const manquants: string[] = [];
+        for (const item of bom.items) {
+          if (!item.matierePremiere) continue;
+          // Quantité nécessaire = quantité BOM × (1 + pertes%) × quantité OF prévue
+          const qteNecessaire =
+            Number(item.quantite) *
+            (1 + Number(item.pertes) / 100) *
+            Number(of.quantitePrevue);
+          const stockDispo = Number(item.matierePremiere.stockActuel);
+          if (stockDispo < qteNecessaire) {
+            manquants.push(
+              `${item.matierePremiere.nom} : ${stockDispo} ${item.matierePremiere.unite} disponible, ` +
+              `${qteNecessaire.toFixed(3)} ${item.matierePremiere.unite} nécessaire`,
+            );
+          }
+        }
+        if (manquants.length > 0) {
+          throw new BadRequestException(
+            `Stocks matières premières insuffisants pour lancer l'OF :\n${manquants.join('\n')}`,
+          );
+        }
+      }
     }
 
     const updateData: Record<string, unknown> = { statut };

@@ -28,7 +28,8 @@ export class AuthService {
     });
 
     if (!tenant || !tenant.actif) {
-      throw new NotFoundException(`Tenant "${dto.tenantSlug}" introuvable ou inactif`);
+      // Message générique : ne pas révéler si le slug existe ou non
+      throw new UnauthorizedException('Email ou mot de passe incorrect');
     }
 
     // 2. Trouver l'utilisateur dans ce tenant

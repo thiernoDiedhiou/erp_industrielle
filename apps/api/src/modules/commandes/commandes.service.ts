@@ -197,6 +197,31 @@ export class CommandesService {
       );
     }
 
+    // ── Vérification stock disponible avant livraison ────────────────────────
+    if (nouveauStatut === 'livree') {
+      const produits = await this.prisma.produit.findMany({
+        where: { id: { in: commande.lignes.map((l) => l.produitId) }, tenantId },
+        select: { id: true, nom: true, stockActuel: true },
+      });
+      const stockMap = Object.fromEntries(produits.map((p) => [p.id, p]));
+
+      const manquants: string[] = [];
+      for (const ligne of commande.lignes) {
+        const produit = stockMap[ligne.produitId];
+        if (!produit || Number(produit.stockActuel) < Number(ligne.quantite)) {
+          const dispo = produit ? Number(produit.stockActuel) : 0;
+          manquants.push(
+            `${produit?.nom ?? ligne.produitId} : ${dispo} disponible, ${Number(ligne.quantite)} demandé`,
+          );
+        }
+      }
+      if (manquants.length > 0) {
+        throw new BadRequestException(
+          `Stock insuffisant pour la livraison :\n${manquants.join('\n')}`,
+        );
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.commande.update({
         where: { id },
