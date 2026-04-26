@@ -75,8 +75,8 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
       this.connection.on('error', (err: Error) => {
         this.logger.error(`Erreur RabbitMQ : ${err.message}`);
       });
-    } catch (err: any) {
-      this.logger.error(`Impossible de se connecter à RabbitMQ : ${err.message}`);
+    } catch (err) {
+      this.logger.error(`Impossible de se connecter à RabbitMQ : ${(err as Error).message}`);
       setTimeout(() => this.connect(), 10000);
     }
   }

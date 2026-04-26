@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { BomService } from '../bom/bom.service';
 import { ConfigEngineService } from '../config-engine/config-engine.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 // Transitions par défaut — utilisées si aucun workflow n'est configuré en BDD pour ce tenant
 const TRANSITIONS_OF_DEFAUT: Record<string, string[]> = {
@@ -21,6 +22,7 @@ export class ProductionService {
     private prisma: PrismaService,
     private bomService: BomService,
     private configEngine: ConfigEngineService,
+    private notifications: NotificationsService,
   ) {}
 
   // ─── Ordres de fabrication ──────────────────────────────────────────────────
@@ -236,6 +238,10 @@ export class ProductionService {
         }
       }
 
+      return ofUpdated;
+    }).then((ofUpdated) => {
+      // Notification SSE hors transaction (opération non bloquante)
+      this.notifications.statutOF(tenantId, of.reference, of.statut, statut, id).catch(() => {});
       return ofUpdated;
     });
   }

@@ -302,8 +302,10 @@ export class CommandesService {
         });
       }
 
-      this.notifications.statutCommande(tenantId, commande.reference, commande.statut, nouveauStatut);
-
+      return updated;
+    }).then((updated) => {
+      // Notification hors transaction — fire-and-forget non bloquant
+      this.notifications.statutCommande(tenantId, commande.reference, commande.statut, nouveauStatut, id).catch(() => {});
       return updated;
     });
   }

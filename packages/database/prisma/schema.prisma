@@ -50,6 +50,7 @@ model Tenant {
   customFields  CustomField[]
   customEnums   CustomEnum[]
   workflows     WorkflowDefinition[]
+  notifications Notification[]
 
   @@map("tenants")
 }
@@ -683,6 +684,26 @@ model AuditLog {
   @@index([tenantId, entite, entiteId])
   @@index([tenantId, userId])
   @@map("audit_logs")
+}
+
+// ═══════════════════════════════════════════════════════
+// NOTIFICATIONS — Historique persisté par tenant
+// ═══════════════════════════════════════════════════════
+model Notification {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  type      String   // alerte_stock | statut_commande | statut_of | paiement_recu | info
+  titre     String
+  message   String
+  data      Json?
+  lue       Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, lue])
+  @@map("notifications")
 }
 
 // ═══════════════════════════════════════════════════════

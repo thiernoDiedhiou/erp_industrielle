@@ -205,9 +205,6 @@ export class FacturationService {
         });
       }
 
-      // Notification SSE temps réel
-      this.notifications.paiementRecu(tenantId, facture.reference, data.montant);
-
       // Notification async via RabbitMQ (pour futurs consommateurs : comptabilité, etc.)
       this.queue.notifier({
         tenantId,
@@ -217,6 +214,10 @@ export class FacturationService {
         data: { factureId, montant: data.montant, mode: data.mode },
       });
 
+      return paiement;
+    }).then((paiement) => {
+      // Notification SSE hors transaction — fire-and-forget non bloquant
+      this.notifications.paiementRecu(tenantId, facture.reference, data.montant, factureId).catch(() => {});
       return paiement;
     });
   }

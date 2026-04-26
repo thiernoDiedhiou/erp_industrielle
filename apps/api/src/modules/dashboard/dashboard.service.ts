@@ -155,9 +155,8 @@ export class DashboardService {
     const mois: { mois: string; ca: number; nbFactures: number }[] = [];
     const now = new Date();
     const anneeRef = annee ?? now.getFullYear();
-    const nbMois = annee ? 12 : 12;
 
-    for (let i = 0; i < nbMois; i++) {
+    for (let i = 0; i < 12; i++) {
       const debut = annee
         ? new Date(anneeRef, i, 1)
         : new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
@@ -325,7 +324,7 @@ export class DashboardService {
   // Évolution du stock des 10 matières premières les plus critiques
   async getStockCritique(tenantId: string) {
     const matieres = await this.prisma.matierePremiere.findMany({
-      where: { tenantId },
+      where: { tenantId, deletedAt: null },
       select: {
         id: true,
         nom: true,

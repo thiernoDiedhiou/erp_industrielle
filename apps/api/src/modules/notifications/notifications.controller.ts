@@ -1,4 +1,4 @@
-import { Controller, Get, Sse, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Sse, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -18,11 +18,23 @@ export class NotificationsController {
     return this.notificationsService.getStreamForTenant(user.tenantId);
   }
 
-  // Endpoint de test pour déclencher une notification manuellement
+  @Get()
+  @ApiOperation({ summary: 'Historique des 50 dernières notifications' })
+  getHistorique(@CurrentUser() user: JwtPayload) {
+    return this.notificationsService.getHistorique(user.tenantId);
+  }
+
+  @Patch('lire-tout')
+  @ApiOperation({ summary: 'Marquer toutes les notifications comme lues' })
+  async marquerToutesLues(@CurrentUser() user: JwtPayload) {
+    await this.notificationsService.marquerToutesLues(user.tenantId);
+    return { ok: true };
+  }
+
   @Get('test')
   @ApiOperation({ summary: 'Déclencher une notification de test' })
-  test(@CurrentUser() user: JwtPayload) {
-    this.notificationsService.emit({
+  async test(@CurrentUser() user: JwtPayload) {
+    await this.notificationsService.emit({
       tenantId: user.tenantId,
       type: 'info',
       titre: 'Test notification',
