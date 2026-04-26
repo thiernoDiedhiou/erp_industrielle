@@ -84,6 +84,12 @@ export class TenantsController {
     return this.tenantsService.toggleModule(user.tenantId, code, body.actif);
   }
 
+  @Get('mes-modules')
+  @ApiOperation({ summary: 'Codes des modules actifs pour le tenant courant' })
+  getModulesActifs(@CurrentUser() user: JwtPayload) {
+    return this.tenantsService.getModulesActifs(user.tenantId);
+  }
+
   @Get('settings')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Paramètres de configuration du tenant' })

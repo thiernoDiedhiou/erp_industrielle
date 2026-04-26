@@ -31,12 +31,13 @@ interface SidebarProps {
   tenantSlug: string;
   userRole: string;
   permissions: PermissionsMap;
+  activeModules?: string[];
   branding?: Branding;
   ouvert: boolean;
   setOuvert: (v: boolean) => void;
 }
 
-export function Sidebar({ tenantSlug, userRole, permissions, branding, ouvert, setOuvert }: SidebarProps) {
+export function Sidebar({ tenantSlug, userRole, permissions, activeModules, branding, ouvert, setOuvert }: SidebarProps) {
   const pathname = usePathname();
   const base = `/${tenantSlug}`;
   const isAdmin = userRole === 'admin';
@@ -77,6 +78,8 @@ export function Sidebar({ tenantSlug, userRole, permissions, branding, ouvert, s
   const visibleItems = navItems.filter((item) => {
     if (!item.moduleCode && !item.adminOnly) return true;
     if (item.adminOnly) return isAdmin;
+    // Vérifier l'activation du module — s'applique à tous les rôles, y compris admin
+    if (item.moduleCode && activeModules && !activeModules.includes(item.moduleCode)) return false;
     if (isAdmin) return true;
     return permissions[item.moduleCode!]?.lire === true;
   });

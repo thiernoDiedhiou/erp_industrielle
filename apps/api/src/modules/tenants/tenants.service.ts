@@ -153,6 +153,21 @@ export class TenantsService {
     });
   }
 
+  // Retourne les codes des modules actifs (avec cache Redis)
+  async getModulesActifs(tenantId: string): Promise<string[]> {
+    const cached = await this.redis.getModulesActifs(tenantId);
+    if (cached) return cached;
+
+    const tenantModules = await this.prisma.tenantModule.findMany({
+      where: { tenantId, actif: true },
+      include: { module: { select: { code: true } } },
+    });
+
+    const codes = tenantModules.map((tm) => tm.module.code);
+    await this.redis.setModulesActifs(tenantId, codes);
+    return codes;
+  }
+
   async getBranding(slug: string) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { slug },

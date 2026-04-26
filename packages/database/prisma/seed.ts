@@ -178,6 +178,67 @@ async function main() {
     }
   }
 
+  // ─── 6b. Workflow Ordres de fabrication GISAC ──────────────────────────────
+  console.log('Création du workflow ordres de fabrication...');
+  const wfOfId = 'workflow-of-gisac';
+  const workflowOf = await prisma.workflowDefinition.upsert({
+    where: { id: wfOfId },
+    update: {},
+    create: { id: wfOfId, tenantId: gisac.id, entite: 'ordre_fabrication', nom: 'Workflow OF GISAC', actif: true },
+  });
+
+  const statesOf = [
+    { code: 'planifie',  libelle: 'Planifié',    couleur: '#9E9E9E', etapInitiale: true,  ordre: 1 },
+    { code: 'en_cours',  libelle: 'En cours',    couleur: '#2196F3', ordre: 2 },
+    { code: 'en_pause',  libelle: 'En pause',    couleur: '#FF9800', ordre: 3 },
+    { code: 'termine',   libelle: 'Terminé',     couleur: '#4CAF50', etapFinale: true,   ordre: 4 },
+    { code: 'annule',    libelle: 'Annulé',      couleur: '#F44336', etapFinale: true,   ordre: 5 },
+  ];
+
+  const statesOfMap: Record<string, string> = {};
+  for (const s of statesOf) {
+    const st = await prisma.workflowState.upsert({
+      where: { workflowId_code: { workflowId: workflowOf.id, code: s.code } },
+      update: { libelle: s.libelle },
+      create: {
+        workflowId: workflowOf.id,
+        code: s.code,
+        libelle: s.libelle,
+        couleur: s.couleur,
+        etapInitiale: s.etapInitiale ?? false,
+        etapFinale: s.etapFinale ?? false,
+        ordre: s.ordre,
+      },
+    });
+    statesOfMap[s.code] = st.id;
+  }
+
+  const transitionsOf = [
+    { from: 'planifie', to: 'en_cours', libelle: 'Lancer',         roles: ['production', 'direction', 'admin'] },
+    { from: 'planifie', to: 'annule',   libelle: 'Annuler',         roles: ['direction', 'admin'] },
+    { from: 'en_cours', to: 'termine',  libelle: 'Clôturer',        roles: ['production', 'direction', 'admin'] },
+    { from: 'en_cours', to: 'en_pause', libelle: 'Mettre en pause', roles: ['production', 'direction', 'admin'] },
+    { from: 'en_pause', to: 'en_cours', libelle: 'Reprendre',       roles: ['production', 'direction', 'admin'] },
+    { from: 'en_pause', to: 'annule',   libelle: 'Annuler',         roles: ['direction', 'admin'] },
+  ];
+
+  for (const t of transitionsOf) {
+    const existing = await prisma.workflowTransition.findFirst({
+      where: { workflowId: workflowOf.id, etatSourceId: statesOfMap[t.from], etatCibleId: statesOfMap[t.to] },
+    });
+    if (!existing) {
+      await prisma.workflowTransition.create({
+        data: {
+          workflowId: workflowOf.id,
+          etatSourceId: statesOfMap[t.from],
+          etatCibleId:  statesOfMap[t.to],
+          libelle:       t.libelle,
+          rolesAutorises: t.roles,
+        },
+      });
+    }
+  }
+
   // ─── 7. Utilisateurs GISAC (bcrypt facteur 12) ──────────────────────────────
   console.log('Création des utilisateurs...');
   const usersData = [

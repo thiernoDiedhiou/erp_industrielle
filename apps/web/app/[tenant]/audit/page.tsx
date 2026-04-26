@@ -131,7 +131,7 @@ const construireDiff = (
   avant?: Record<string, unknown>,
   apres?: Record<string, unknown>,
 ): DiffRow[] => {
-  const allKeys = new Set([...Object.keys(avant ?? {}), ...Object.keys(apres ?? {})]);
+  const allKeys = Array.from(new Set([...Object.keys(avant ?? {}), ...Object.keys(apres ?? {})]));
   const rows: DiffRow[] = [];
   for (const key of allKeys) {
     if (CHAMPS_EXCLUS.has(key)) continue;

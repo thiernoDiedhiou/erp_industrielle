@@ -143,20 +143,25 @@ export class ConfigEngineService {
     return workflow;
   }
 
-  // Vérifie si une transition est autorisée pour un rôle donné
+  /**
+   * Vérifie si une transition est autorisée pour un rôle donné.
+   * Retourne :
+   *   null  → aucun workflow configuré pour ce tenant/entité (l'appelant applique ses propres défauts)
+   *   true  → workflow présent et transition explicitement autorisée
+   *   false → workflow présent mais transition refusée (état inconnu, transition absente, ou rôle non autorisé)
+   */
   async verifierTransition(
     tenantId: string,
     entite: string,
     etatSourceCode: string,
     etatCibleCode: string,
     role: string,
-  ): Promise<boolean> {
+  ): Promise<boolean | null> {
     const workflow = await this.prisma.workflowDefinition.findFirst({
-      where: { tenantId, entite },
+      where: { tenantId, entite, actif: true },
     });
-    if (!workflow) return false;
+    if (!workflow) return null; // Pas de workflow → l'appelant gère son fallback
 
-    // Trouver les IDs des états source et cible
     const [etatSource, etatCible] = await Promise.all([
       this.prisma.workflowState.findFirst({ where: { workflowId: workflow.id, code: etatSourceCode } }),
       this.prisma.workflowState.findFirst({ where: { workflowId: workflow.id, code: etatCibleCode } }),
@@ -174,7 +179,6 @@ export class ConfigEngineService {
 
     if (!transition) return false;
 
-    // Vérifier si le rôle est autorisé
     const rolesAutorises = transition.rolesAutorises as string[];
     return rolesAutorises.includes(role);
   }

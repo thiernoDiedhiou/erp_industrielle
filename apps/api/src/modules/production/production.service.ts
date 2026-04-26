@@ -2,15 +2,25 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BomService } from '../bom/bom.service';
+import { ConfigEngineService } from '../config-engine/config-engine.service';
+
+// Transitions par défaut — utilisées si aucun workflow n'est configuré en BDD pour ce tenant
+const TRANSITIONS_OF_DEFAUT: Record<string, string[]> = {
+  planifie: ['en_cours', 'annule'],
+  en_cours: ['termine', 'en_pause'],
+  en_pause: ['en_cours', 'annule'],
+};
 
 @Injectable()
 export class ProductionService {
   constructor(
     private prisma: PrismaService,
     private bomService: BomService,
+    private configEngine: ConfigEngineService,
   ) {}
 
   // ─── Ordres de fabrication ──────────────────────────────────────────────────
@@ -110,22 +120,30 @@ export class ProductionService {
     id: string,
     statut: string,
     quantiteProduite?: number,
+    role = 'admin',
   ) {
     const of = await this.prisma.ordreFabrication.findFirst({
       where: { id, tenantId },
     });
     if (!of) throw new NotFoundException('OF introuvable');
 
-    const transitionsValides: Record<string, string[]> = {
-      planifie: ['en_cours', 'annule'],
-      en_cours: ['termine', 'en_pause'],
-      en_pause: ['en_cours', 'annule'],
-    };
+    const workflowAutorise = await this.configEngine.verifierTransition(
+      tenantId,
+      'ordre_fabrication',
+      of.statut,
+      statut,
+      role,
+    );
 
-    if (!transitionsValides[of.statut]?.includes(statut)) {
-      throw new BadRequestException(
-        `Transition "${of.statut}" → "${statut}" invalide`,
-      );
+    if (workflowAutorise === false) {
+      // Workflow configuré mais transition refusée — on ne passe pas par le fallback
+      throw new ForbiddenException(`Transition "${of.statut}" → "${statut}" non autorisée`);
+    } else if (workflowAutorise === null) {
+      // Aucun workflow configuré — fallback sur les transitions par défaut
+      const transitionsDefaut = TRANSITIONS_OF_DEFAUT[of.statut] ?? [];
+      if (!transitionsDefaut.includes(statut)) {
+        throw new ForbiddenException(`Transition "${of.statut}" → "${statut}" non autorisée`);
+      }
     }
 
     // ── Lancement : vérifier stocks MP via BOM avant de démarrer ─────────────

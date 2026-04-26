@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { RedisModule } from '../../redis/redis.module';
 import { UploadModule } from '../upload/upload.module';
 import { SuperAdminJwtStrategy } from './strategies/super-admin-jwt.strategy';
 import { SuperAdminAuthController } from './auth/super-admin-auth.controller';
@@ -13,6 +14,7 @@ import { SuperAdminUploadController } from './upload/super-admin-upload.controll
 @Module({
   imports: [
     PrismaModule,
+    RedisModule,
     PassportModule,
     JwtModule.register({}),
     UploadModule,

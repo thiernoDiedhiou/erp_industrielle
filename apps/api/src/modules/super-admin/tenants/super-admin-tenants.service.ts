@@ -3,10 +3,20 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { RedisService } from '../../../redis/redis.service';
+
+const PRIX_PLAN_XOF: Record<string, number> = {
+  starter: 29_000,
+  pro: 79_000,
+  enterprise: 199_000,
+};
 
 @Injectable()
 export class SuperAdminTenantsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redis: RedisService,
+  ) {}
 
   async getListe(search?: string) {
     const tenants = await this.prisma.tenant.findMany({
@@ -159,6 +169,9 @@ export class SuperAdminTenantsService {
       });
     });
 
+    // Invalider le cache Redis pour que le tenant voit les changements immédiatement
+    await this.redis.invalidateModulesActifs(id);
+
     return this.getUn(id);
   }
 
@@ -188,16 +201,52 @@ export class SuperAdminTenantsService {
   }
 
   async getStats() {
-    const [totalTenants, tenantsActifs, totalUsers, usersActifs, parPlan] = await Promise.all([
+    const maintenant = new Date();
+    const debutCeMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+    const debutMoisPrecedent = new Date(maintenant.getFullYear(), maintenant.getMonth() - 1, 1);
+
+    const [
+      totalTenants, tenantsActifs, totalUsers, usersActifs, parPlan,
+      nouveauxCeMois, nouveauxMoisPrecedent, usageModulesRaw,
+    ] = await Promise.all([
       this.prisma.tenant.count(),
       this.prisma.tenant.count({ where: { actif: true } }),
       this.prisma.user.count({ where: { deletedAt: null } }),
       this.prisma.user.count({ where: { actif: true, deletedAt: null } }),
-      this.prisma.tenant.groupBy({ by: ['plan'], _count: { id: true } }),
+      this.prisma.tenant.groupBy({ by: ['plan'], where: { actif: true }, _count: { id: true } }),
+      this.prisma.tenant.count({ where: { createdAt: { gte: debutCeMois } } }),
+      this.prisma.tenant.count({ where: { createdAt: { gte: debutMoisPrecedent, lt: debutCeMois } } }),
+      this.prisma.tenantModule.groupBy({
+        by: ['moduleId'],
+        where: { actif: true },
+        _count: { tenantId: true },
+      }),
     ]);
 
-    const commandes = await this.prisma.commande.count();
-    const factures = await this.prisma.facture.count();
+    const [commandes, factures, modules] = await Promise.all([
+      this.prisma.commande.count(),
+      this.prisma.facture.count(),
+      this.prisma.module.findMany({ select: { id: true, code: true } }),
+    ]);
+
+    const parPlanMap = parPlan.reduce(
+      (acc, p) => ({ ...acc, [p.plan]: p._count.id }),
+      {} as Record<string, number>,
+    );
+
+    const mrr = Object.entries(parPlanMap).reduce(
+      (total, [plan, nb]) => total + nb * (PRIX_PLAN_XOF[plan] ?? 0),
+      0,
+    );
+
+    const moduleMap = Object.fromEntries(modules.map((m) => [m.id, m.code]));
+    const usageModules = usageModulesRaw
+      .map((u) => ({
+        code: moduleMap[u.moduleId] ?? u.moduleId,
+        nb: u._count.tenantId,
+        pct: totalTenants > 0 ? Math.round((u._count.tenantId / totalTenants) * 100) : 0,
+      }))
+      .sort((a, b) => b.nb - a.nb);
 
     return {
       totalTenants,
@@ -207,7 +256,184 @@ export class SuperAdminTenantsService {
       usersActifs,
       commandes,
       factures,
-      parPlan: parPlan.reduce((acc, p) => ({ ...acc, [p.plan]: p._count.id }), {} as Record<string, number>),
+      parPlan: parPlanMap,
+      mrr,
+      nouveauxCeMois,
+      nouveauxMoisPrecedent,
+      usageModules,
     };
+  }
+
+  // ─── Workflows ──────────────────────────────────────────────────────────────
+
+  async getWorkflowsTenant(tenantId: string) {
+    return this.prisma.workflowDefinition.findMany({
+      where: { tenantId },
+      include: {
+        etats: { orderBy: { ordre: 'asc' } },
+        transitions: {
+          include: { etatSource: true, etatCible: true },
+        } as any,
+      },
+      orderBy: { entite: 'asc' },
+    });
+  }
+
+  async modifierWorkflowTenant(tenantId: string, workflowId: string, data: {
+    nom: string;
+    etats: Array<{
+      code: string;
+      libelle: string;
+      couleur?: string;
+      etapInitiale?: boolean;
+      etapFinale?: boolean;
+      ordre?: number;
+    }>;
+    transitions: Array<{
+      etatSourceCode: string;
+      etatCibleCode: string;
+      rolesAutorises: string[];
+      libelle: string;
+    }>;
+  }) {
+    const workflow = await this.prisma.workflowDefinition.findFirst({ where: { id: workflowId, tenantId } });
+    if (!workflow) throw new NotFoundException('Workflow introuvable');
+
+    return this.prisma.$transaction(async (tx) => {
+      // Supprimer dans l'ordre (transitions référencent les états)
+      await tx.workflowTransition.deleteMany({ where: { workflowId } });
+      await tx.workflowState.deleteMany({ where: { workflowId } });
+      await tx.workflowDefinition.update({ where: { id: workflowId }, data: { nom: data.nom } });
+
+      const etatsCreated = await Promise.all(
+        data.etats.map((e, i) =>
+          tx.workflowState.create({
+            data: {
+              workflowId,
+              code: e.code,
+              libelle: e.libelle,
+              couleur: e.couleur,
+              etapInitiale: e.etapInitiale ?? false,
+              etapFinale: e.etapFinale ?? false,
+              ordre: e.ordre ?? i,
+            },
+          }),
+        ),
+      );
+
+      const etatMap = Object.fromEntries(etatsCreated.map((e) => [e.code, e]));
+
+      for (const t of data.transitions) {
+        const source = etatMap[t.etatSourceCode];
+        const cible = etatMap[t.etatCibleCode];
+        if (!source || !cible) continue;
+        await tx.workflowTransition.create({
+          data: {
+            workflowId,
+            etatSourceId: source.id,
+            etatCibleId: cible.id,
+            rolesAutorises: t.rolesAutorises,
+            libelle: t.libelle,
+          },
+        });
+      }
+
+      return this.getWorkflowsTenant(tenantId);
+    });
+  }
+
+  async creerWorkflowTenant(tenantId: string, data: {
+    entite: string;
+    nom: string;
+    etats: Array<{
+      code: string;
+      libelle: string;
+      couleur?: string;
+      etapInitiale?: boolean;
+      etapFinale?: boolean;
+      ordre?: number;
+    }>;
+    transitions: Array<{
+      etatSourceCode: string;
+      etatCibleCode: string;
+      rolesAutorises: string[];
+      libelle: string;
+    }>;
+  }) {
+    const existe = await this.prisma.workflowDefinition.findFirst({
+      where: { tenantId, entite: data.entite },
+    });
+    if (existe) throw new ConflictException(`Un workflow pour "${data.entite}" existe déjà`);
+
+    return this.prisma.$transaction(async (tx) => {
+      const workflow = await tx.workflowDefinition.create({
+        data: { tenantId, entite: data.entite, nom: data.nom },
+      });
+
+      const etatsCreated = await Promise.all(
+        data.etats.map((e, i) =>
+          tx.workflowState.create({
+            data: {
+              workflowId: workflow.id,
+              code: e.code,
+              libelle: e.libelle,
+              couleur: e.couleur,
+              etapInitiale: e.etapInitiale ?? false,
+              etapFinale: e.etapFinale ?? false,
+              ordre: e.ordre ?? i,
+            },
+          }),
+        ),
+      );
+
+      const etatMap = Object.fromEntries(etatsCreated.map((e) => [e.code, e]));
+
+      for (const t of data.transitions) {
+        const source = etatMap[t.etatSourceCode];
+        const cible = etatMap[t.etatCibleCode];
+        if (!source || !cible) continue;
+        await tx.workflowTransition.create({
+          data: {
+            workflowId: workflow.id,
+            etatSourceId: source.id,
+            etatCibleId: cible.id,
+            rolesAutorises: t.rolesAutorises,
+            libelle: t.libelle,
+          },
+        });
+      }
+
+      return this.getWorkflowsTenant(tenantId);
+    });
+  }
+
+  // ─── Champs personnalisés ───────────────────────────────────────────────────
+
+  async getChampsT(tenantId: string) {
+    return this.prisma.customField.findMany({
+      where: { tenantId },
+      orderBy: [{ entite: 'asc' }, { ordre: 'asc' }],
+    });
+  }
+
+  async creerChampTenant(tenantId: string, data: {
+    entite: string;
+    nom: string;
+    type: string;
+    label: string;
+    obligatoire?: boolean;
+    ordre?: number;
+  }) {
+    const types = ['text', 'number', 'date', 'boolean', 'select', 'textarea'];
+    if (!types.includes(data.type)) {
+      throw new BadRequestException(`Type "${data.type}" invalide. Types valides : ${types.join(', ')}`);
+    }
+    return this.prisma.customField.create({ data: { ...data, tenantId } });
+  }
+
+  async toggleChampTenant(tenantId: string, champId: string) {
+    const champ = await this.prisma.customField.findFirst({ where: { id: champId, tenantId } });
+    if (!champ) throw new NotFoundException('Champ introuvable');
+    return this.prisma.customField.update({ where: { id: champId }, data: { actif: !champ.actif } });
   }
 }

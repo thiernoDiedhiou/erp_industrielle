@@ -356,7 +356,7 @@ export default function DashboardPage() {
               <BarChart data={topClients} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
                 <XAxis type="number" tickFormatter={(v) => formatCA(v)} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="nom" tick={{ fontSize: 11, fill: '#374151' }} axisLine={false} tickLine={false} width={80} />
-                <Tooltip formatter={(v: number) => [`${v.toLocaleString('fr-FR')} FCFA`, 'CA']} />
+                <Tooltip formatter={(v) => [`${Number(v).toLocaleString('fr-FR')} FCFA`, 'CA']} />
                 <Bar dataKey="ca" radius={[0, 4, 4, 0]}>
                   {topClients.map((_: any, i: number) => (
                     <Cell key={i} fill={i === 0 ? primary : secondary} fillOpacity={1 - i * 0.12} />

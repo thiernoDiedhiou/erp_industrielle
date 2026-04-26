@@ -62,4 +62,42 @@ export class SuperAdminTenantsController {
   }) {
     return this.service.creerUser(tenantId, body);
   }
+
+  // ─── Workflows ─────────────────────────────────────────────────────────────
+
+  @Get(':id/workflows')
+  getWorkflows(@Param('id') id: string) {
+    return this.service.getWorkflowsTenant(id);
+  }
+
+  @Post(':id/workflows')
+  creerWorkflow(@Param('id') id: string, @Body() body: any) {
+    return this.service.creerWorkflowTenant(id, body);
+  }
+
+  @Put(':id/workflows/:workflowId')
+  modifierWorkflow(
+    @Param('id') id: string,
+    @Param('workflowId') workflowId: string,
+    @Body() body: any,
+  ) {
+    return this.service.modifierWorkflowTenant(id, workflowId, body);
+  }
+
+  // ─── Champs personnalisés ───────────────────────────────────────────────────
+
+  @Get(':id/champs')
+  getChamps(@Param('id') id: string) {
+    return this.service.getChampsT(id);
+  }
+
+  @Post(':id/champs')
+  creerChamp(@Param('id') id: string, @Body() body: any) {
+    return this.service.creerChampTenant(id, body);
+  }
+
+  @Patch(':id/champs/:champId/toggle')
+  toggleChamp(@Param('id') id: string, @Param('champId') champId: string) {
+    return this.service.toggleChampTenant(id, champId);
+  }
 }

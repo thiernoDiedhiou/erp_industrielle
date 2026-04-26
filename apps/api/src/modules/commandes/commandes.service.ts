@@ -9,6 +9,15 @@ import { ConfigEngineService } from '../config-engine/config-engine.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateCommandeDto } from './dto/create-commande.dto';
 
+// Transitions utilisées quand aucun workflow n'est configuré en BDD pour ce tenant
+const TRANSITIONS_COMMANDE_DEFAUT: Record<string, string[]> = {
+  brouillon:     ['confirmee', 'annulee'],
+  confirmee:     ['en_production', 'annulee'],
+  en_production: ['prete', 'annulee'],
+  prete:         ['livree'],
+  livree:        ['facturee'],
+};
+
 @Injectable()
 export class CommandesService {
   constructor(
@@ -191,10 +200,19 @@ export class CommandesService {
       role,
     );
 
-    if (!transitionAutorisee) {
+    if (transitionAutorisee === false) {
+      // Workflow configuré mais transition refusée
       throw new ForbiddenException(
         `Transition "${commande.statut}" → "${nouveauStatut}" non autorisée pour le rôle ${role}`,
       );
+    } else if (transitionAutorisee === null) {
+      // Aucun workflow configuré — fallback sur les transitions par défaut
+      const transitionsDefaut = TRANSITIONS_COMMANDE_DEFAUT[commande.statut] ?? [];
+      if (!transitionsDefaut.includes(nouveauStatut)) {
+        throw new ForbiddenException(
+          `Transition "${commande.statut}" → "${nouveauStatut}" non autorisée`,
+        );
+      }
     }
 
     // ── Vérification stock disponible avant livraison ────────────────────────
