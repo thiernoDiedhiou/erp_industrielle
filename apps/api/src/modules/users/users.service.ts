@@ -3,11 +3,15 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { QueueService } from '../queue/queue.service';
 import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private queue: QueueService,
+  ) {}
 
   async getListe(tenantId: string, opts: { page?: number; limite?: number; search?: string; role?: string }) {
     const { page = 1, limite = 20, search, role } = opts;
@@ -61,7 +65,7 @@ export class UsersService {
     if (existant) throw new ConflictException('Cet email est déjà utilisé dans ce tenant');
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         tenantId,
         nom: dto.nom,
@@ -76,6 +80,17 @@ export class UsersService {
         role: true, telephone: true, actif: true, createdAt: true,
       },
     });
+
+    // Email de bienvenue asynchrone (fire-and-forget)
+    this.queue.envoyerEmail({
+      to: dto.email,
+      subject: 'Bienvenue sur GISAC ERP',
+      template: 'bienvenue',
+      tenantId,
+      data: { prenom: dto.prenom ?? '', nom: dto.nom, email: dto.email, role: dto.role },
+    });
+
+    return user;
   }
 
   async modifier(tenantId: string, id: string, dto: Partial<CreateUserDto>) {
@@ -131,7 +146,16 @@ export class UsersService {
       data: { passwordHash, refreshTokenHash: null },
     });
 
-    return { temporaryPassword: tempPassword };
+    // Envoyer le mot de passe temporaire par email — jamais en clair dans la réponse API
+    this.queue.envoyerEmail({
+      to: user.email,
+      subject: 'Réinitialisation de votre mot de passe — GISAC ERP',
+      template: 'reset_password',
+      tenantId,
+      data: { prenom: user.prenom ?? '', nom: user.nom, tempPassword },
+    });
+
+    return { message: 'Mot de passe temporaire envoyé par email' };
   }
 
   async supprimer(tenantId: string, id: string) {

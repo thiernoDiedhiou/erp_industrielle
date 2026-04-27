@@ -87,11 +87,11 @@ export class ProductionController {
 
   @Get('matieres-premieres')
   @ApiOperation({ summary: 'Liste des matières premières' })
-  getMatieresPrmieres(
+  getMatieresPremieres(
     @CurrentUser() user: JwtPayload,
     @Query('page') page = 1,
     @Query('limite') limite = 20,
   ) {
-    return this.productionService.getMatieresPrmieres(user.tenantId, { page: +page, limite: +limite });
+    return this.productionService.getMatieresPremieres(user.tenantId, { page: +page, limite: +limite });
   }
 }

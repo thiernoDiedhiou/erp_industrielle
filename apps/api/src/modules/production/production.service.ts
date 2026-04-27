@@ -8,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BomService } from '../bom/bom.service';
 import { ConfigEngineService } from '../config-engine/config-engine.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { QueueService } from '../queue/queue.service';
 
 // Transitions par défaut — utilisées si aucun workflow n'est configuré en BDD pour ce tenant
 const TRANSITIONS_OF_DEFAUT: Record<string, string[]> = {
@@ -23,6 +24,7 @@ export class ProductionService {
     private bomService: BomService,
     private configEngine: ConfigEngineService,
     private notifications: NotificationsService,
+    private queue: QueueService,
   ) {}
 
   // ─── Ordres de fabrication ──────────────────────────────────────────────────
@@ -191,6 +193,16 @@ export class ProductionService {
       if (quantiteProduite !== undefined) updateData.quantiteProduite = quantiteProduite;
     }
 
+    // Charger la BOM avant la transaction pour préparer la consommation automatique
+    let bomCloture: Awaited<ReturnType<BomService['getPourProduit']>> | null = null;
+    if (statut === 'termine' && quantiteProduite && quantiteProduite > 0) {
+      try {
+        bomCloture = await this.bomService.getPourProduit(tenantId, of.produitId);
+      } catch {
+        // Pas de BOM active — la consommation reste uniquement manuelle
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const ofUpdated = await tx.ordreFabrication.update({
         where: { id },
@@ -204,6 +216,11 @@ export class ProductionService {
             where: { id: of.machineId },
             data: { statut: 'en_production' },
           });
+        } else if (statut === 'en_pause') {
+          await tx.machine.update({
+            where: { id: of.machineId },
+            data: { statut: 'en_pause' },
+          });
         } else if (statut === 'termine' || statut === 'annule') {
           await tx.machine.update({
             where: { id: of.machineId },
@@ -212,7 +229,9 @@ export class ProductionService {
         }
       }
 
-      // ── Clôture OF : impacts stock produit fini ──────────────────────────────
+      // ── Clôture OF : impacts stock produit fini + consommation MP ────────────
+      const mpAutoConsommeesIds: string[] = [];
+
       if (statut === 'termine' && quantiteProduite && quantiteProduite > 0) {
         // 1. Incrémenter le stock du produit fini
         await tx.produit.update({
@@ -232,14 +251,88 @@ export class ProductionService {
           },
         });
 
-        // 3. Vérifier si la commande liée peut passer à "prête"
+        // 3. Consommation automatique des MP via BOM (complète la saisie manuelle)
+        if (bomCloture && bomCloture.items.length > 0) {
+          // Cumul des consommations déjà saisies manuellement pour cet OF
+          const consommationsManuelles = await tx.consommationMP.findMany({
+            where: { ordreFabricationId: id },
+            select: { matierePremiereId: true, quantiteConsommee: true },
+          });
+          const dejaConsomme: Record<string, number> = {};
+          for (const c of consommationsManuelles) {
+            const mpId = c.matierePremiereId;
+            if (mpId) dejaConsomme[mpId] = (dejaConsomme[mpId] ?? 0) + Number(c.quantiteConsommee);
+          }
+
+          for (const item of bomCloture.items) {
+            if (!item.matierePremiere) continue;
+            const mpId = item.matierePremiere.id;
+            // Quantité théorique = BOM × (1 + pertes%) × quantité réellement produite
+            const qteTheorique =
+              Number(item.quantite) * (1 + Number(item.pertes) / 100) * quantiteProduite;
+            const aDeduire = Math.max(0, qteTheorique - (dejaConsomme[mpId] ?? 0));
+            if (aDeduire <= 0) continue;
+
+            // Décrémenter le stock MP (la vérification stock a eu lieu au lancement)
+            await tx.matierePremiere.update({
+              where: { id: mpId },
+              data: { stockActuel: { decrement: aDeduire } },
+            });
+
+            // Enregistrer la consommation automatique
+            await tx.consommationMP.create({
+              data: {
+                ordreFabricationId: id,
+                matierePremiereId: mpId,
+                tenantId,
+                quantiteConsommee: aDeduire,
+              },
+            });
+
+            // Mouvement de sortie
+            await tx.mouvementStock.create({
+              data: {
+                tenantId,
+                type: 'sortie',
+                reference: `OF-${of.reference}`,
+                matierePremiereId: mpId,
+                quantite: aDeduire,
+                motif: `Consommation auto clôture OF ${of.reference}`,
+              },
+            });
+
+            mpAutoConsommeesIds.push(mpId);
+          }
+        }
+
+        // 4. Vérifier si la commande liée peut passer à "prête"
         if (of.commandeId) {
           await this.verifierCommandePrete(tx, tenantId, of.commandeId);
         }
       }
 
-      return ofUpdated;
-    }).then((ofUpdated) => {
+      return { ofUpdated, mpAutoConsommeesIds };
+    }).then(async ({ ofUpdated, mpAutoConsommeesIds }) => {
+      // Alertes stock pour les MP auto-consommées (SSE + email via queue)
+      if (mpAutoConsommeesIds.length > 0) {
+        const mps = await this.prisma.matierePremiere.findMany({
+          where: { id: { in: mpAutoConsommeesIds } },
+          select: { id: true, nom: true, stockActuel: true, stockMinimum: true, unite: true },
+        });
+        for (const mp of mps) {
+          if (Number(mp.stockActuel) <= Number(mp.stockMinimum)) {
+            this.queue.alerterStock({
+              tenantId,
+              matiereId: mp.id,
+              matierenom: mp.nom,
+              stockActuel: Number(mp.stockActuel),
+              stockMinimum: Number(mp.stockMinimum),
+              unite: mp.unite,
+            });
+          }
+        }
+      }
+
       // Notification SSE hors transaction (opération non bloquante)
       this.notifications.statutOF(tenantId, of.reference, of.statut, statut, id).catch(() => {});
       return ofUpdated;
@@ -328,7 +421,7 @@ export class ProductionService {
 
   // ─── Matières premières ─────────────────────────────────────────────────────
 
-  async getMatieresPrmieres(tenantId: string, opts: { page?: number; limite?: number }) {
+  async getMatieresPremieres(tenantId: string, opts: { page?: number; limite?: number }) {
     const { page = 1, limite = 20 } = opts;
     const skip = (page - 1) * limite;
 

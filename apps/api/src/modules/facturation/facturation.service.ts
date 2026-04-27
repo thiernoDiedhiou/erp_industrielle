@@ -205,15 +205,6 @@ export class FacturationService {
         });
       }
 
-      // Notification async via RabbitMQ (pour futurs consommateurs : comptabilité, etc.)
-      this.queue.notifier({
-        tenantId,
-        type: 'paiement_recu',
-        titre: 'Paiement reçu',
-        message: `Paiement de ${data.montant} FCFA sur ${facture.reference}`,
-        data: { factureId, montant: data.montant, mode: data.mode },
-      });
-
       return paiement;
     }).then((paiement) => {
       // Notification SSE hors transaction — fire-and-forget non bloquant

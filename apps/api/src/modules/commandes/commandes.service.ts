@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigEngineService } from '../config-engine/config-engine.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { QueueService } from '../queue/queue.service';
 import { CreateCommandeDto } from './dto/create-commande.dto';
 
 // Transitions utilisées quand aucun workflow n'est configuré en BDD pour ce tenant
@@ -24,6 +25,7 @@ export class CommandesService {
     private prisma: PrismaService,
     private configEngine: ConfigEngineService,
     private notifications: NotificationsService,
+    private queue: QueueService,
   ) {}
 
   async getCommandes(
@@ -277,7 +279,12 @@ export class CommandesService {
           });
         }
 
-        // Créer le bon de livraison automatiquement
+        // Créer le bon de livraison automatiquement (guard anti-doublon)
+        const blExistant = await tx.bonLivraison.findFirst({ where: { commandeId: id, tenantId } });
+        if (blExistant) {
+          return updated;
+        }
+
         const blCount = await tx.bonLivraison.count({
           where: { tenantId, reference: { startsWith: `BL-${new Date().getFullYear()}` } },
         });
@@ -303,9 +310,34 @@ export class CommandesService {
       }
 
       return updated;
-    }).then((updated) => {
-      // Notification hors transaction — fire-and-forget non bloquant
+    }).then(async (updated) => {
+      // Notification SSE hors transaction — fire-and-forget non bloquant
       this.notifications.statutCommande(tenantId, commande.reference, commande.statut, nouveauStatut, id).catch(() => {});
+
+      // Email de confirmation client quand la commande passe à "confirmee"
+      if (nouveauStatut === 'confirmee') {
+        const commandeComplete = await this.prisma.commande.findFirst({
+          where: { id },
+          include: { client: { select: { nom: true, email: true } } },
+        });
+        if (commandeComplete?.client.email) {
+          this.queue.envoyerEmail({
+            to: commandeComplete.client.email,
+            subject: `Commande ${commande.reference} confirmée — GISAC`,
+            template: 'commande_confirmee',
+            tenantId,
+            data: {
+              reference: commande.reference,
+              client: commandeComplete.client.nom,
+              montant: new Intl.NumberFormat('fr-SN').format(Number(commande.totalTTC)),
+              livraison: commande.dateLivraison
+                ? commande.dateLivraison.toLocaleDateString('fr-SN')
+                : null,
+            },
+          });
+        }
+      }
+
       return updated;
     });
   }

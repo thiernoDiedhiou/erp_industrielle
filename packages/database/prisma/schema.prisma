@@ -473,10 +473,11 @@ model MatierePremiere {
   updatedAt             DateTime  @updatedAt      @map("updated_at")
   deletedAt             DateTime?                  @map("deleted_at")
 
-  fournisseur   Fournisseur?  @relation(fields: [fournisseurId], references: [id])
-  consommations ConsommationMP[]
-  mouvements    MouvementStock[]
-  bomItems      BomItem[]
+  fournisseur       Fournisseur?        @relation(fields: [fournisseurId], references: [id])
+  consommations     ConsommationMP[]
+  mouvements        MouvementStock[]
+  bomItems          BomItem[]
+  collectesRecyclage RecyclageCollecte[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -710,17 +711,21 @@ model Notification {
 // RECYCLAGE (module optionnel)
 // ═══════════════════════════════════════════════════════
 model RecyclageCollecte {
-  id           String   @id @default(uuid())
-  tenantId     String   @map("tenant_id")
-  typeDechet   String   @map("type_dechet")
-  quantite     Decimal  @db.Decimal(10, 2)  @map("quantite_kg")
-  unite        String   @default("kg")
-  sourceAdresse String? @map("source")
-  collecteur   String?
-  statut       String   @default("collecte")  // collecte | traitement | valorise
-  notes        String?
-  dateCollecte DateTime @default(now()) @map("date_collecte")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id                     String    @id @default(uuid())
+  tenantId               String    @map("tenant_id")
+  typeDechet             String    @map("type_dechet")
+  quantite               Decimal   @db.Decimal(10, 2) @map("quantite_kg")
+  unite                  String    @default("kg")
+  sourceAdresse          String?   @map("source")
+  collecteur             String?
+  statut                 String    @default("collecte") // collecte | traitement | valorise
+  notes                  String?
+  dateCollecte           DateTime  @default(now()) @map("date_collecte")
+  matierePremiereCibleId String?   @map("matiere_premiere_cible_id")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  deletedAt              DateTime? @map("deleted_at")
+
+  matierePremiereCible MatierePremiere? @relation(fields: [matierePremiereCibleId], references: [id])
 
   @@index([tenantId])
   @@map("recyclage_collectes")

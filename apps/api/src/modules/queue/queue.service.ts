@@ -13,7 +13,7 @@ export type QueueName = typeof QUEUES[keyof typeof QUEUES];
 export interface EmailMessage {
   to: string;
   subject: string;
-  template: 'facture' | 'commande_confirmee' | 'alerte_stock' | 'bienvenue';
+  template: 'facture' | 'commande_confirmee' | 'alerte_stock' | 'bienvenue' | 'reset_password';
   data: Record<string, unknown>;
   tenantId: string;
 }

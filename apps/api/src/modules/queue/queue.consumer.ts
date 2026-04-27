@@ -25,9 +25,25 @@ export class QueueConsumer implements OnModuleInit {
   }
 
   private async demarrerConsommateurs() {
+    // Fermer proprement l'ancienne connexion avant de recréer (évite les fuites de handles)
+    try {
+      await this.channel?.close();
+      await this.connection?.close();
+    } catch { /* déjà fermée ou inexistante */ }
+    this.channel = null;
+    this.connection = null;
+
     try {
       this.connection = await amqp.connect(this.url);
       this.channel = await this.connection.createChannel();
+
+      this.connection.on('close', () => {
+        this.logger.warn('Connexion consommateur RabbitMQ fermée, reconnexion dans 5s...');
+        setTimeout(() => this.demarrerConsommateurs(), 5000);
+      });
+      this.connection.on('error', (err: Error) => {
+        this.logger.error(`Erreur connexion consommateur : ${err.message}`);
+      });
 
       // Traiter 1 message à la fois par queue — évite la surcharge
       await this.channel.prefetch(1);
@@ -37,21 +53,25 @@ export class QueueConsumer implements OnModuleInit {
         await this.channel.assertQueue(queue, { durable: true });
       }
 
+      // Capturer le channel ici : si reconnexion entre réception et ack,
+      // this.channel pointe vers le nouveau canal — le message resterait orphelin
+      const ch = this.channel;
+
       // ─── Consommateur emails ──────────────────────────────────────────────
-      await this.channel.consume(QUEUES.EMAILS, async (msg) => {
+      await ch.consume(QUEUES.EMAILS, async (msg) => {
         if (!msg) return;
         try {
           const message: EmailMessage = JSON.parse(msg.content.toString());
           await this.emailService.envoyerEmail(message);
-          this.channel?.ack(msg);
-        } catch (err: any) {
-          this.logger.error(`Erreur traitement email : ${err.message}`);
-          this.channel?.nack(msg, false, false); // dead-letter, pas de requeue infini
+          ch.ack(msg);
+        } catch (err) {
+          this.logger.error(`Erreur traitement email : ${(err as Error).message}`);
+          ch.nack(msg, false, false); // dead-letter, pas de requeue infini
         }
       });
 
       // ─── Consommateur alertes stock ───────────────────────────────────────
-      await this.channel.consume(QUEUES.STOCK_ALERTS, async (msg) => {
+      await ch.consume(QUEUES.STOCK_ALERTS, async (msg) => {
         if (!msg) return;
         try {
           const alert: StockAlertMessage = JSON.parse(msg.content.toString());
@@ -62,6 +82,7 @@ export class QueueConsumer implements OnModuleInit {
             alert.matierenom,
             alert.stockActuel,
             alert.unite,
+            alert.matiereId,
           );
 
           // Email au responsable stock
@@ -78,36 +99,36 @@ export class QueueConsumer implements OnModuleInit {
             },
           });
 
-          this.channel?.ack(msg);
+          ch.ack(msg);
           this.logger.log(`Alerte stock traitée : ${alert.matierenom}`);
-        } catch (err: any) {
-          this.logger.error(`Erreur alerte stock : ${err.message}`);
-          this.channel?.nack(msg, false, false);
+        } catch (err) {
+          this.logger.error(`Erreur alerte stock : ${(err as Error).message}`);
+          ch.nack(msg, false, false);
         }
       });
 
       // ─── Consommateur notifications générales ─────────────────────────────
-      await this.channel.consume(QUEUES.NOTIFICATIONS, async (msg) => {
+      await ch.consume(QUEUES.NOTIFICATIONS, async (msg) => {
         if (!msg) return;
         try {
           const notif: NotificationMessage = JSON.parse(msg.content.toString());
-          this.notificationsService.emit({
+          await this.notificationsService.emit({
             tenantId: notif.tenantId,
-            type: notif.type as any,
+            type: notif.type as 'alerte_stock' | 'statut_commande' | 'statut_of' | 'paiement_recu' | 'info',
             titre: notif.titre,
             message: notif.message,
             data: notif.data,
           });
-          this.channel?.ack(msg);
-        } catch (err: any) {
-          this.logger.error(`Erreur notification : ${err.message}`);
-          this.channel?.nack(msg, false, false);
+          ch.ack(msg);
+        } catch (err) {
+          this.logger.error(`Erreur notification : ${(err as Error).message}`);
+          ch.nack(msg, false, false);
         }
       });
 
       this.logger.log('Consommateurs RabbitMQ démarrés (emails, stock_alerts, notifications)');
-    } catch (err: any) {
-      this.logger.error(`Impossible de démarrer les consommateurs : ${err.message}`);
+    } catch (err) {
+      this.logger.error(`Impossible de démarrer les consommateurs : ${(err as Error).message}`);
       setTimeout(() => this.demarrerConsommateurs(), 10000);
     }
   }

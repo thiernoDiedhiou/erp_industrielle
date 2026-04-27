@@ -13,15 +13,17 @@ export class LogistiqueService {
     const { page = 1, limite = 20, search, statut } = opts;
     const skip = (page - 1) * limite;
 
-    const where: any = { tenantId };
-    if (statut) where.statut = statut;
-    if (search) {
-      where.OR = [
-        { reference: { contains: search, mode: 'insensitive' as const } },
-        { client: { nom: { contains: search, mode: 'insensitive' as const } } },
-        { transporteur: { contains: search, mode: 'insensitive' as const } },
-      ];
-    }
+    const where = {
+      tenantId,
+      ...(statut ? { statut } : {}),
+      ...(search ? {
+        OR: [
+          { reference: { contains: search, mode: 'insensitive' as const } },
+          { client: { nom: { contains: search, mode: 'insensitive' as const } } },
+          { transporteur: { contains: search, mode: 'insensitive' as const } },
+        ],
+      } : {}),
+    };
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.bonLivraison.findMany({
@@ -59,7 +61,11 @@ export class LogistiqueService {
   }
 
   async creer(tenantId: string, dto: CreateBonLivraisonDto) {
-    const reference = `BL-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+    const annee = new Date().getFullYear();
+    const count = await this.prisma.bonLivraison.count({
+      where: { tenantId, reference: { startsWith: `BL-${annee}` } },
+    });
+    const reference = `BL-${annee}-${String(count + 1).padStart(4, '0')}`;
 
     return this.prisma.$transaction(async (tx) => {
       const bl = await tx.bonLivraison.create({
@@ -109,7 +115,7 @@ export class LogistiqueService {
       throw new BadRequestException(`Transition ${bl.statut} → ${statut} non autorisée`);
     }
 
-    const data: any = { statut };
+    const data: { statut: string; dateExpedition?: Date; dateLivraison?: Date } = { statut };
     if (statut === 'expedie') data.dateExpedition = new Date();
     if (statut === 'livre') data.dateLivraison = new Date();
 
