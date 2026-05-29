@@ -42,6 +42,8 @@ RUN npm ci --workspaces --include-workspace-root --omit=dev --ignore-scripts
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY packages/database/prisma ./packages/database/prisma
+# shared est résolu via symlink npm workspace → packages/shared ; copier les fichiers compilés
+COPY --from=builder /app/packages/shared/src ./packages/shared/src
 
 EXPOSE 3001
 
