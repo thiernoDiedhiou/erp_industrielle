@@ -19,10 +19,14 @@
     "db:studio": "cd packages/database && npx prisma studio",
     "db:reset": "cd packages/database && npx prisma migrate reset",
     "build": "npm run build:api && npm run build:web",
-    "test": "npm run test:api"
+    "test": "npm run test:api",
+    "postinstall": "cd packages/database && npx prisma generate"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
     "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "rxjs": "7.8.2"
   }
 }

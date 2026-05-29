@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { BomService } from '../bom/bom.service';
 import { ConfigEngineService } from '../config-engine/config-engine.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -444,7 +445,7 @@ export class ProductionService {
   // Vérifie si toutes les lignes de la commande sont couvertes par des OFs terminés
   // et fait passer la commande en "prête" automatiquement
   private async verifierCommandePrete(
-    tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
+    tx: Prisma.TransactionClient,
     tenantId: string,
     commandeId: string,
   ) {

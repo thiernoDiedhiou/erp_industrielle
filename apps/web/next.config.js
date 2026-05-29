@@ -2,9 +2,7 @@
 const nextConfig = {
   output: 'standalone',
   transpilePackages: ['@saas-erp/shared'],
-  experimental: {
-    serverComponentsExternalPackages: [],
-  },
+  serverExternalPackages: [],
 };
 
 module.exports = nextConfig;
