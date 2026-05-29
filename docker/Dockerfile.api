@@ -29,7 +29,9 @@ COPY packages/shared/package.json ./packages/shared/
 COPY packages/database/package.json ./packages/database/
 COPY apps/api/package.json ./apps/api/
 
-RUN npm ci --workspaces --include-workspace-root --omit=dev
+# --ignore-scripts : le client Prisma est déjà généré dans le stage builder
+# et copié via COPY --from=builder, pas besoin de le regénérer ici
+RUN npm ci --workspaces --include-workspace-root --omit=dev --ignore-scripts
 
 # Copier le build
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
