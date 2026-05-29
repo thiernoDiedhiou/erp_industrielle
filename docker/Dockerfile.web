@@ -6,7 +6,8 @@ COPY package*.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/web/package.json ./apps/web/
 
-RUN npm ci --workspaces --include-workspace-root
+# --ignore-scripts : le web n'utilise pas Prisma, postinstall inutile ici
+RUN npm ci --workspaces --include-workspace-root --ignore-scripts
 
 COPY packages/ ./packages/
 COPY apps/web/ ./apps/web/

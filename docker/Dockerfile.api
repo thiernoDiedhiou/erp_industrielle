@@ -7,12 +7,13 @@ COPY packages/shared/package.json ./packages/shared/
 COPY packages/database/package.json ./packages/database/
 COPY apps/api/package.json ./apps/api/
 
-RUN npm ci --workspaces --include-workspace-root
+# --ignore-scripts : le schema n'est pas encore là, on lance prisma generate manuellement après
+RUN npm ci --workspaces --include-workspace-root --ignore-scripts
 
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 
-# Générer le client Prisma
+# Générer le client Prisma (schema disponible maintenant)
 RUN cd packages/database && npx prisma generate
 
 # Compiler l'API
